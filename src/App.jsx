@@ -60,7 +60,7 @@ function App() {
       });
     };
 
-    if (isFirebaseConfigured) {
+    if (isFirebaseConfigured && auth) {
       // האזנה למצב התחברות של Firebase Auth
       const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
         if (firebaseUser) {
@@ -198,7 +198,7 @@ function App() {
   // התנתקות מהמערכת
   const handleLogout = async () => {
     if (window.confirm('האם אתה בטוח שברצונך להתנתק?')) {
-      if (isFirebaseConfigured) {
+      if (isFirebaseConfigured && auth) {
         try {
           await signOut(auth);
         } catch (error) {

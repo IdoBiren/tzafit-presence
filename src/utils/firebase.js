@@ -12,7 +12,7 @@ const firebaseConfig = {
 };
 
 // בודק האם המשתמש הגדיר את מפתחות הפרויקט ב-Firebase בקובץ .env.local
-const isFirebaseConfigured = !!import.meta.env.VITE_FIREBASE_PROJECT_ID;
+let isFirebaseConfigured = !!import.meta.env.VITE_FIREBASE_PROJECT_ID;
 
 let app = null;
 let db = null;
@@ -25,6 +25,10 @@ if (isFirebaseConfigured) {
     auth = getAuth(app);
   } catch (error) {
     console.error("שגיאה באתחול חיבור Firebase:", error);
+    // נסיגה בטוחה למצב מקומי במקרה של שגיאת אתחול
+    isFirebaseConfigured = false;
+    db = null;
+    auth = null;
   }
 }
 
