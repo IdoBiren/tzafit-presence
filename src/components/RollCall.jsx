@@ -150,18 +150,6 @@ const RollCall = ({ students, history, onSaveAttendance, initialDormFilter, clea
               </div>
             </div>
 
-            {/* שם המדריך */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>שם המדריך הרושם</label>
-              <input 
-                type="text" 
-                className="text-input" 
-                value={markedBy} 
-                onChange={(e) => setMarkedBy(e.target.value)} 
-                placeholder="שם מדריך..." 
-                required 
-              />
-            </div>
           </div>
 
           <div>
