@@ -1,13 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Check, X, PlaneTakeoff, Save, Search, User, Filter, AlertTriangle } from 'lucide-react';
 
-const RollCall = ({ students, history, onSaveAttendance, initialDormFilter, clearInitialDormFilter }) => {
+const RollCall = ({ students, history, onSaveAttendance, initialDormFilter, clearInitialDormFilter, user }) => {
   const [selectedDorm, setSelectedDorm] = useState('הכל');
   const [searchQuery, setSearchQuery] = useState('');
   const [session, setSession] = useState('evening'); // ברירת מחדל רישום ערב
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [markedBy, setMarkedBy] = useState('מדריך תורן');
+  const [markedBy, setMarkedBy] = useState(user ? user.displayName : 'מדריך תורן');
   const [tempRecords, setTempRecords] = useState({});
+
+  // עדכון שם המדריך בהתאם למשתמש המחובר
+  useEffect(() => {
+    if (user && user.displayName) {
+      setMarkedBy(user.displayName);
+    }
+  }, [user]);
+
 
   // סנכרון פילטר בית מהדאשבורד במידה והשתמשו בו
   useEffect(() => {

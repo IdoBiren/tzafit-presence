@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -15,14 +16,17 @@ const isFirebaseConfigured = !!import.meta.env.VITE_FIREBASE_PROJECT_ID;
 
 let app = null;
 let db = null;
+let auth = null;
 
 if (isFirebaseConfigured) {
   try {
     app = initializeApp(firebaseConfig);
     db = getFirestore(app);
+    auth = getAuth(app);
   } catch (error) {
-    console.error("שגיאה באתחול חיבור Firebase Firestore:", error);
+    console.error("שגיאה באתחול חיבור Firebase:", error);
   }
 }
 
-export { db, isFirebaseConfigured };
+export { db, auth, isFirebaseConfigured };
+

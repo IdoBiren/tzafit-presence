@@ -12,6 +12,7 @@ import Dashboard from './components/Dashboard';
 import RollCall from './components/RollCall';
 import EmergencyMode from './components/EmergencyMode';
 import StudentManager from './components/StudentManager';
+import Login from './components/Login';
 import { 
   subscribeToStudents, 
   saveStudents, 
@@ -20,8 +21,11 @@ import {
   subscribeToEmergency, 
   saveEmergencyState 
 } from './utils/storage';
+import { auth, isFirebaseConfigured } from './utils/firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 
 function App() {
+  const [user, setUser] = useState(null);
   const [students, setStudents] = useState([]);
   const [history, setHistory] = useState([]);
   const [emergencyState, setEmergencyState] = useState({ active: false, records: {}, reason: '', triggeredAt: null });
@@ -34,31 +38,70 @@ function App() {
 
   // חיבור מאזינים בזמן אמת (Realtime Subscriptions) מול ענן Firebase או LocalStorage
   useEffect(() => {
-    setLoading(true);
-    
-    // 1. האזנה לחניכים
-    const unsubscribeStudents = subscribeToStudents((updatedStudents) => {
-      setStudents(updatedStudents);
-    });
+    let unsubscribeStudents = () => {};
+    let unsubscribeHistory = () => {};
+    let unsubscribeEmergency = () => {};
 
-    // 2. האזנה להיסטוריית נוכחות
-    const unsubscribeHistory = subscribeToHistory((updatedHistory) => {
-      setHistory(updatedHistory);
-    });
+    const startSubscriptions = () => {
+      // 1. האזנה לחניכים
+      unsubscribeStudents = subscribeToStudents((updatedStudents) => {
+        setStudents(updatedStudents);
+      });
 
-    // 3. האזנה למצב חירום גלובלי
-    const unsubscribeEmergency = subscribeToEmergency((updatedEmergency) => {
-      setEmergencyState(updatedEmergency);
-      setLoading(false); // הפסקת מסך הטעינה הראשוני ברגע שהנתונים מגיעים
-    });
+      // 2. האזנה להיסטוריית נוכחות
+      unsubscribeHistory = subscribeToHistory((updatedHistory) => {
+        setHistory(updatedHistory);
+      });
 
-    // ניקוי המאזינים בעת סגירת הרכיב
-    return () => {
-      unsubscribeStudents();
-      unsubscribeHistory();
-      unsubscribeEmergency();
+      // 3. האזנה למצב חירום גלובלי
+      unsubscribeEmergency = subscribeToEmergency((updatedEmergency) => {
+        setEmergencyState(updatedEmergency);
+        setLoading(false); // הפסקת מסך הטעינה הראשוני ברגע שהנתונים מגיעים
+      });
     };
-  }, []);
+
+    if (isFirebaseConfigured) {
+      // האזנה למצב התחברות של Firebase Auth
+      const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+        if (firebaseUser) {
+          setUser({
+            uid: firebaseUser.uid,
+            displayName: firebaseUser.displayName || 'מדריך צפית',
+            email: firebaseUser.email,
+            photoURL: firebaseUser.photoURL || '',
+            isDemo: false
+          });
+          startSubscriptions();
+        } else {
+          setUser(null);
+          setLoading(false);
+        }
+      });
+
+      return () => {
+        unsubscribeAuth();
+        unsubscribeStudents();
+        unsubscribeHistory();
+        unsubscribeEmergency();
+      };
+    } else {
+      // מצב דמו / LocalStorage
+      const cachedDemoUser = sessionStorage.getItem('tzafit_demo_user');
+      if (cachedDemoUser) {
+        setUser(JSON.parse(cachedDemoUser));
+        startSubscriptions();
+      } else {
+        setUser(null);
+        setLoading(false);
+      }
+
+      return () => {
+        unsubscribeStudents();
+        unsubscribeHistory();
+        unsubscribeEmergency();
+      };
+    }
+  }, [user?.uid]);
 
   // שמירת רשימת חניכים מעודכנת בענן
   const handleSaveStudents = async (updatedList) => {
@@ -144,6 +187,32 @@ function App() {
     setDormFilter('הכל');
   };
 
+  // טיפול בהתחברות מוצלחת
+  const handleLoginSuccess = (loggedInUser) => {
+    if (loggedInUser.isDemo) {
+      sessionStorage.setItem('tzafit_demo_user', JSON.stringify(loggedInUser));
+    }
+    setUser(loggedInUser);
+  };
+
+  // התנתקות מהמערכת
+  const handleLogout = async () => {
+    if (window.confirm('האם אתה בטוח שברצונך להתנתק?')) {
+      if (isFirebaseConfigured) {
+        try {
+          await signOut(auth);
+        } catch (error) {
+          console.error("שגיאה בתהליך ההתנתקות:", error);
+        }
+      } else {
+        sessionStorage.removeItem('tzafit_demo_user');
+      }
+      setUser(null);
+      setLoading(false);
+      setActiveTab('rollcall');
+    }
+  };
+
   // רינדור התוכן הדינמי בהתאם ללשונית שנבחרה
   const renderTabContent = () => {
     switch (activeTab) {
@@ -164,6 +233,7 @@ function App() {
             onSaveAttendance={handleSaveAttendance} 
             initialDormFilter={dormFilter}
             clearInitialDormFilter={clearInitialDormFilter}
+            user={user}
           />
         );
       case 'emergency':
@@ -183,7 +253,7 @@ function App() {
           />
         );
       default:
-        return <RollCall students={students} history={history} onSaveAttendance={handleSaveAttendance} initialDormFilter={dormFilter} clearInitialDormFilter={clearInitialDormFilter} />;
+        return <RollCall students={students} history={history} onSaveAttendance={handleSaveAttendance} initialDormFilter={dormFilter} clearInitialDormFilter={clearInitialDormFilter} user={user} />;
     }
   };
 
@@ -224,6 +294,11 @@ function App() {
     );
   }
 
+  // אם המשתמש אינו מחובר, נציג את דף ההתחברות היוקרתי
+  if (!user) {
+    return <Login onLogin={handleLoginSuccess} />;
+  }
+
   return (
     <div className="app-container">
       {/* מחוון סנכרון חי לענן (dbOperating) צף ויוקרתי */}
@@ -256,6 +331,8 @@ function App() {
       <Header 
         emergencyActive={emergencyState.active} 
         onToggleEmergency={handleToggleEmergency} 
+        user={user}
+        onLogout={handleLogout}
       />
 
       {/* באנר חירום עליון מהבהב במידה וחירום פעיל אך המשתמש בלשונית אחרת */}
