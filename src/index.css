@@ -1175,6 +1175,8 @@ a {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
     padding-bottom: 0.5rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
 
   .chart-bar-container {
@@ -1199,14 +1201,31 @@ a {
   .main-content {
     margin: 1rem auto !important;
     padding: 0 1rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
   }
 
   .header-wrapper {
     padding: 1rem 1rem !important;
   }
 
+  .grid-2col {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .grid-2col > div {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
   .card {
     padding: 1rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .header-title h1 {

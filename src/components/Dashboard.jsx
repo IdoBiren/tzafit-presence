@@ -419,43 +419,96 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
             </p>
 
             {chronicAbsences.length > 0 ? (
-              <div style={{ overflowX: 'auto' }}>
-                <table className="custom-table" style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>
-                  <thead>
-                    <tr>
-                      <th style={{ padding: '0.5rem' }}>שם</th>
-                      <th style={{ padding: '0.5rem' }}>קבוצה</th>
-                      <th style={{ padding: '0.5rem' }}>חיסור</th>
-                      <th style={{ padding: '0.5rem' }}>נוכחות</th>
-                      <th style={{ padding: '0.5rem', textAlign: 'left' }}>קשר</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {chronicAbsences.map((student) => (
-                      <tr key={student.id}>
-                        <td style={{ fontWeight: 700, color: 'var(--primary)', padding: '0.5rem' }}>{student.name}</td>
-                        <td style={{ padding: '0.5rem' }}>{student.dorm}</td>
-                        <td style={{ color: 'var(--absent)', fontWeight: 700, padding: '0.5rem' }}>{student.absentCount} סבבים</td>
-                        <td style={{ padding: '0.5rem' }}>
-                          <span className="badge red" style={{ fontWeight: 700, padding: '0.1rem 0.4rem', fontSize: '0.75rem' }}>
-                            {student.rate}%
-                          </span>
-                        </td>
-                        <td style={{ padding: '0.5rem', textAlign: 'left' }}>
-                          <a 
-                            href={`tel:${student.parentPhone}`}
-                            className="action-btn"
-                            title={`התקשר ל${student.parentName} (${student.parentPhone})`}
-                            style={{ padding: '0.2rem 0.35rem', backgroundColor: 'var(--accent-light)', borderColor: 'transparent', color: 'var(--accent)', display: 'inline-flex' }}
-                          >
-                            <Phone size={11} />
-                          </a>
-                        </td>
+              <>
+                {/* תצוגת מחשב: טבלה רחבה ומלאה */}
+                <div className="desktop-only" style={{ overflowX: 'auto' }}>
+                  <table className="custom-table" style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ padding: '0.5rem' }}>שם</th>
+                        <th style={{ padding: '0.5rem' }}>קבוצה</th>
+                        <th style={{ padding: '0.5rem' }}>חיסור</th>
+                        <th style={{ padding: '0.5rem' }}>נוכחות</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>קשר</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {chronicAbsences.map((student) => (
+                        <tr key={student.id}>
+                          <td style={{ fontWeight: 700, color: 'var(--primary)', padding: '0.5rem' }}>{student.name}</td>
+                          <td style={{ padding: '0.5rem' }}>{student.dorm}</td>
+                          <td style={{ color: 'var(--absent)', fontWeight: 700, padding: '0.5rem' }}>{student.absentCount} סבבים</td>
+                          <td style={{ padding: '0.5rem' }}>
+                            <span className="badge red" style={{ fontWeight: 700, padding: '0.1rem 0.4rem', fontSize: '0.75rem' }}>
+                              {student.rate}%
+                            </span>
+                          </td>
+                          <td style={{ padding: '0.5rem', textAlign: 'left' }}>
+                            <a 
+                              href={`tel:${student.parentPhone}`}
+                              className="action-btn"
+                              title={`התקשר ל${student.parentName} (${student.parentPhone})`}
+                              style={{ padding: '0.2rem 0.35rem', backgroundColor: 'var(--accent-light)', borderColor: 'transparent', color: 'var(--accent)', display: 'inline-flex' }}
+                            >
+                              <Phone size={11} />
+                            </a>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* תצוגת מובייל: כרטיסים אנכיים אלגנטיים לרוחב מלא */}
+                <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.75rem' }}>
+                  {chronicAbsences.map((student) => (
+                    <div key={student.id} style={{
+                      backgroundColor: 'var(--bg-app)',
+                      padding: '0.75rem 1rem',
+                      borderRadius: '12px',
+                      border: '1px solid var(--border-color)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '0.75rem'
+                    }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: 0 }}>
+                        <span style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '0.9rem' }}>{student.name}</span>
+                        <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          <span>קבוצה: {student.dorm}</span>
+                          <span>•</span>
+                          <span style={{ color: 'var(--absent)', fontWeight: 600 }}>חיסור: {student.absentCount} סבבים</span>
+                        </div>
+                      </div>
+                      
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
+                        <span className="badge red" style={{ fontWeight: 800, padding: '0.25rem 0.5rem', fontSize: '0.72rem', borderRadius: '8px' }}>
+                          {student.rate}% נוכחות
+                        </span>
+                        <a 
+                          href={`tel:${student.parentPhone}`}
+                          className="action-btn"
+                          title={`התקשר ל${student.parentName} (${student.parentPhone})`}
+                          style={{ 
+                            padding: '0.5rem', 
+                            backgroundColor: 'var(--accent-light)', 
+                            borderColor: 'transparent', 
+                            color: 'var(--accent)', 
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '32px',
+                            height: '32px'
+                          }}
+                        >
+                          <Phone size={14} />
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             ) : (
               <div className="empty-state" style={{ padding: '1.5rem 1rem' }}>
                 <div className="empty-state-icon" style={{ backgroundColor: 'var(--present-bg)', color: 'var(--present)', width: '48px', height: '48px' }}>
