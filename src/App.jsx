@@ -19,7 +19,8 @@ import {
   subscribeToHistory, 
   saveAttendanceRecord, 
   subscribeToEmergency, 
-  saveEmergencyState 
+  saveEmergencyState,
+  getOrCreateUserRole
 } from './utils/storage';
 import { auth, isFirebaseConfigured } from './utils/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -62,16 +63,30 @@ function App() {
 
     if (isFirebaseConfigured && auth) {
       // האזנה למצב התחברות של Firebase Auth
-      const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
         if (firebaseUser) {
-          setUser({
-            uid: firebaseUser.uid,
-            displayName: firebaseUser.displayName || 'מדריך צפית',
-            email: firebaseUser.email,
-            photoURL: firebaseUser.photoURL || '',
-            isDemo: false
-          });
-          startSubscriptions();
+          setLoading(true);
+          try {
+            const role = await getOrCreateUserRole(firebaseUser.uid, {
+              displayName: firebaseUser.displayName,
+              email: firebaseUser.email,
+              photoURL: firebaseUser.photoURL
+            });
+            
+            setUser({
+              uid: firebaseUser.uid,
+              displayName: firebaseUser.displayName || 'מדריך צפית',
+              email: firebaseUser.email,
+              photoURL: firebaseUser.photoURL || '',
+              role: role,
+              isDemo: false
+            });
+            startSubscriptions();
+          } catch (err) {
+            console.error("שגיאה בקריאת פרטי הרשאות משתמש:", err);
+            setUser(null);
+            setLoading(false);
+          }
         } else {
           setUser(null);
           setLoading(false);
@@ -246,6 +261,11 @@ function App() {
           />
         );
       case 'students':
+        if (user?.role !== 'admin') {
+          // חסימת גישה למשתמשים שאינם מנהלים
+          setActiveTab('rollcall');
+          return null;
+        }
         return (
           <StudentManager 
             students={students} 
@@ -381,14 +401,16 @@ function App() {
             <span>לוח בקרה ודוחות</span>
           </button>
 
-          <button 
-            type="button"
-            className={`nav-item ${activeTab === 'students' ? 'active' : ''}`}
-            onClick={() => setActiveTab('students')}
-          >
-            <Users size={18} />
-            <span>ניהול חניכים</span>
-          </button>
+          {user?.role === 'admin' && (
+            <button 
+              type="button"
+              className={`nav-item ${activeTab === 'students' ? 'active' : ''}`}
+              onClick={() => setActiveTab('students')}
+            >
+              <Users size={18} />
+              <span>ניהול חניכים</span>
+            </button>
+          )}
 
           {/* לשונית חירום ייעודית - משנה צבע למהבהב כשיש אירוע */}
           <button 

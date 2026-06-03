@@ -5,6 +5,7 @@ import {
   doc, 
   onSnapshot, 
   setDoc, 
+  getDoc,
   getDocs, 
   deleteDoc, 
   query, 
@@ -304,3 +305,37 @@ export const saveEmergencyState = async (state) => {
     localStorage.setItem("tzafit_emergency_v2", JSON.stringify(state));
   }
 };
+
+// 7. שליפה או יצירה של תפקיד משתמש (Role) ב-Firestore
+export const getOrCreateUserRole = async (uid, userDetails) => {
+  if (isFirebaseConfigured) {
+    try {
+      const userDocRef = doc(db, "users", uid);
+      const userDocSnap = await getDoc(userDocRef);
+      
+      if (userDocSnap.exists()) {
+        const data = userDocSnap.data();
+        return data.role || 'counselor';
+      } else {
+        // יצירת משתמש חדש עם תפקיד מדריך כברירת מחדל
+        const newUser = {
+          uid,
+          displayName: userDetails.displayName || 'מדריך צפית',
+          email: userDetails.email || '',
+          photoURL: userDetails.photoURL || '',
+          role: 'counselor',
+          createdAt: new Date().toISOString()
+        };
+        await setDoc(userDocRef, newUser);
+        return 'counselor';
+      }
+    } catch (error) {
+      console.error("שגיאה בשליפת/יצירת תפקיד המשתמש מהענן:", error);
+      return 'counselor'; // במקרה של תקלה נחזיר מדריך כברירת מחדל בטוחה
+    }
+  } else {
+    // דמו מקומי - נחזיר את מה שסופק או מדריך כברירת מחדל
+    return userDetails.role || 'counselor';
+  }
+};
+

@@ -25,7 +25,16 @@ const Header = ({ emergencyActive, onToggleEmergency, user, onLogout }) => {
                 <div style={styles.avatarFallback}>{user.displayName[0]}</div>
               )}
               <div style={styles.userInfo}>
-                <span style={styles.userName}>{user.displayName}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <span style={styles.userName}>{user.displayName}</span>
+                  <span style={{
+                    ...styles.roleBadge,
+                    backgroundColor: user.role === 'admin' ? '#2563eb' : '#475569',
+                    color: '#ffffff'
+                  }}>
+                    {user.role === 'admin' ? 'מנהל' : 'מדריך'}
+                  </span>
+                </div>
                 <button 
                   onClick={onLogout} 
                   style={styles.logoutBtn} 
@@ -40,24 +49,26 @@ const Header = ({ emergencyActive, onToggleEmergency, user, onLogout }) => {
             </div>
           )}
 
-          {/* כפתור הפעלת חירום */}
-          <button 
-            className={`emergency-btn ${emergencyActive ? 'active' : ''}`}
-            onClick={onToggleEmergency}
-            title={emergencyActive ? "לחיצה תבטל את אירוע החירום ותחזיר את האפליקציה למצב רגיל" : "לחיצה תפעיל מצב נוכחות חירום דחוף"}
-          >
-            {emergencyActive ? (
-              <>
-                <ShieldAlert size={18} />
-                <span>ביטול מצב חירום</span>
-              </>
-            ) : (
-              <>
-                <AlertOctagon size={18} />
-                <span>הפעל מצב חירום!</span>
-              </>
-            )}
-          </button>
+          {/* כפתור הפעלת חירום - למנהלים בלבד */}
+          {user?.role === 'admin' && (
+            <button 
+              className={`emergency-btn ${emergencyActive ? 'active' : ''}`}
+              onClick={onToggleEmergency}
+              title={emergencyActive ? "לחיצה תבטל את אירוע החירום ותחזיר את האפליקציה למצב רגיל" : "לחיצה תפעיל מצב נוכחות חירום דחוף"}
+            >
+              {emergencyActive ? (
+                <>
+                  <ShieldAlert size={18} />
+                  <span>ביטול מצב חירום</span>
+                </>
+              ) : (
+                <>
+                  <AlertOctagon size={18} />
+                  <span>הפעל מצב חירום!</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </header>
@@ -121,6 +132,14 @@ const styles = {
     alignItems: 'center',
     transition: 'color 0.2s ease',
     outline: 'none',
+  },
+  roleBadge: {
+    fontSize: '0.62rem',
+    fontWeight: 800,
+    padding: '0.1rem 0.35rem',
+    borderRadius: '4px',
+    lineHeight: 1,
+    flexShrink: 0
   }
 };
 

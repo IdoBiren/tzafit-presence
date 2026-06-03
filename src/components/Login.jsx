@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { LogIn, Key, CloudLightning, ShieldCheck } from 'lucide-react';
+import { LogIn, Key, CloudLightning, ShieldCheck, User, ShieldAlert } from 'lucide-react';
 import { auth, isFirebaseConfigured } from '../utils/firebase';
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { getOrCreateUserRole } from '../utils/storage';
 
 function Login({ onLogin }) {
   const [loading, setLoading] = useState(false);
@@ -19,11 +20,19 @@ function Login({ onLogin }) {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       
+      // שליפה או יצירת תפקיד משתמש ב-Firestore
+      const role = await getOrCreateUserRole(user.uid, {
+        displayName: user.displayName,
+        email: user.email,
+        photoURL: user.photoURL
+      });
+      
       onLogin({
         uid: user.uid,
         displayName: user.displayName || 'מדריך צפית',
         email: user.email,
         photoURL: user.photoURL || '',
+        role: role,
         isDemo: false
       });
     } catch (err) {
@@ -38,14 +47,17 @@ function Login({ onLogin }) {
     }
   };
 
-  const handleDemoLogin = () => {
+  const handleDemoLogin = (role) => {
     setLoading(true);
     setTimeout(() => {
       onLogin({
-        uid: 'demo-user-123',
-        displayName: 'מדריך תורן (דמו)',
-        email: 'demo@tzafit.org.il',
-        photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
+        uid: role === 'admin' ? 'demo-admin-123' : 'demo-counselor-123',
+        displayName: role === 'admin' ? 'מנהל תורן (דמו)' : 'מדריך תורן (דמו)',
+        email: role === 'admin' ? 'admin@tzafit.org.il' : 'counselor@tzafit.org.il',
+        photoURL: role === 'admin' 
+          ? 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&q=80'
+          : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
+        role: role,
         isDemo: true
       });
       setLoading(false);
@@ -102,25 +114,52 @@ function Login({ onLogin }) {
             </div>
           )}
 
-          {/* אפשרות להתחבר כמדריך אורח/דמו */}
-          <button 
-            onClick={handleDemoLogin} 
-            disabled={loading} 
-            style={{
-              ...styles.btn,
-              ...styles.btnDemo,
-              ...(loading ? styles.btnDisabled : {})
-            }}
-          >
-            {loading && !isFirebaseConfigured ? (
-              <span style={styles.spinner}></span>
-            ) : (
-              <>
-                <Key size={18} style={{ marginLeft: '8px' }} />
-                <span>{isFirebaseConfigured ? 'כניסה למצב צפייה/דמו' : 'כניסה למערכת (מצב מקומי)'}</span>
-              </>
-            )}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', margin: '0.5rem 0' }}>
+            <div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255, 255, 255, 0.1)' }}></div>
+            <span style={{ padding: '0 0.75rem', fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>
+              {isFirebaseConfigured ? 'או כניסה מהירה לבדיקה (דמו)' : 'בחר תפקיד לכניסה'}
+            </span>
+            <div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255, 255, 255, 0.1)' }}></div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button 
+              onClick={() => handleDemoLogin('counselor')} 
+              disabled={loading} 
+              style={{
+                ...styles.btn,
+                ...styles.btnDemo,
+                flex: 1,
+                padding: '0.75rem 0.5rem',
+                fontSize: '0.88rem',
+                gap: '6px',
+                ...(loading ? styles.btnDisabled : {})
+              }}
+            >
+              <User size={16} />
+              <span>כניסה כמדריך</span>
+            </button>
+
+            <button 
+              onClick={() => handleDemoLogin('admin')} 
+              disabled={loading} 
+              style={{
+                ...styles.btn,
+                ...styles.btnDemo,
+                flex: 1,
+                padding: '0.75rem 0.5rem',
+                fontSize: '0.88rem',
+                gap: '6px',
+                backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                borderColor: 'rgba(59, 130, 246, 0.2)',
+                color: '#93c5fd',
+                ...(loading ? styles.btnDisabled : {})
+              }}
+            >
+              <ShieldAlert size={16} />
+              <span>כניסה כמנהל</span>
+            </button>
+          </div>
         </div>
 
         <div style={styles.footer}>
@@ -130,6 +169,7 @@ function Login({ onLogin }) {
     </div>
   );
 }
+
 
 const styles = {
   container: {
