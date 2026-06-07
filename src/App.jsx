@@ -38,7 +38,7 @@ function App() {
   const [history, setHistory] = useState([]);
   const [emergencyState, setEmergencyState] = useState({ active: false, records: {}, reason: '', triggeredAt: null });
   const [activeTab, setActiveTab] = useState('rollcall');
-  const [dormFilter, setDormFilter] = useState('הכל');
+  const [dormFilter, setDormFilter] = useState(null);
   
   // מחווני טעינה וסנכרון לענן
   const [loading, setLoading] = useState(true);
@@ -176,7 +176,7 @@ function App() {
         await saveEmergencyState(newEmergencyState);
       }
     } catch (error) {
-      alert("שגיאה בסנכרון השינויים לענן. השינויים יישמרו מקומית.");
+      alert("שגיאה בסנכרון השינויים. אנא בדוק את החיבור לרשת ונסה שוב.");
     } finally {
       setDbOperating(false);
     }
@@ -199,9 +199,13 @@ function App() {
     setDbOperating(true);
     try {
       await saveAttendanceRecord(date, session, records, markedBy);
-      alert('רישום הנוכחות נשמר וסונכרן בהצלחה בענן!');
+      if (isFirebaseConfigured) {
+        alert('רישום הנוכחות נשמר וסונכרן בהצלחה בענן!');
+      } else {
+        alert('רישום הנוכחות נשמר בהצלחה במכשיר (LocalStorage)!');
+      }
     } catch (error) {
-      alert("שגיאה בשמירת סבב הנוכחות לענן. בדוק את החיבור לרשת.");
+      alert("שגיאה בשמירת סבב הנוכחות. בדוק את החיבור לרשת ונסה שוב.");
     } finally {
       setDbOperating(false);
     }
@@ -245,7 +249,7 @@ function App() {
   };
 
   const clearInitialDormFilter = () => {
-    setDormFilter('הכל');
+    setDormFilter(null);
   };
 
   // טיפול בהתחברות מוצלחת
@@ -316,6 +320,10 @@ function App() {
           />
         );
       case 'emergency':
+        if (user?.role !== 'admin' && !emergencyState.active) {
+          setActiveTab('rollcall');
+          return null;
+        }
         return (
           <EmergencyMode 
             students={students} 
@@ -325,16 +333,12 @@ function App() {
           />
         );
       case 'students':
-        if (user?.role !== 'admin') {
-          // חסימת גישה למשתמשים שאינם מנהלים
-          setActiveTab('rollcall');
-          return null;
-        }
         return (
           <StudentManager 
             students={students} 
             onSaveStudents={handleSaveStudents} 
             onResetStudents={handleResetStudents}
+            user={user}
           />
         );
       case 'staff':
@@ -482,16 +486,14 @@ function App() {
             <span>לוח בקרה ודוחות</span>
           </button>
 
-          {user?.role === 'admin' && (
-            <button 
-              type="button"
-              className={`nav-item ${activeTab === 'students' ? 'active' : ''}`}
-              onClick={() => setActiveTab('students')}
-            >
-              <Users size={18} />
-              <span>ניהול חניכים</span>
-            </button>
-          )}
+          <button 
+            type="button"
+            className={`nav-item ${activeTab === 'students' ? 'active' : ''}`}
+            onClick={() => setActiveTab('students')}
+          >
+            <Users size={18} />
+            <span>ניהול חניכים</span>
+          </button>
 
           {user?.role === 'admin' && (
             <button 
@@ -505,15 +507,17 @@ function App() {
           )}
 
           {/* לשונית חירום ייעודית - משנה צבע למהבהב כשיש אירוע */}
-          <button 
-            type="button"
-            className={`nav-item ${activeTab === 'emergency' ? 'active' : ''}`}
-            onClick={() => setActiveTab('emergency')}
-            style={emergencyState.active ? { color: '#ef4444', fontWeight: 800 } : {}}
-          >
-            <AlertTriangle size={18} style={emergencyState.active ? { animation: 'blink 1s infinite' } : {}} />
-            <span>{emergencyState.active ? 'דיווח חירום פעיל!' : 'בדיקת חירום'}</span>
-          </button>
+          {(user?.role === 'admin' || emergencyState.active) && (
+            <button 
+              type="button"
+              className={`nav-item ${activeTab === 'emergency' ? 'active' : ''}`}
+              onClick={() => setActiveTab('emergency')}
+              style={emergencyState.active ? { color: '#ef4444', fontWeight: 800 } : {}}
+            >
+              <AlertTriangle size={18} style={emergencyState.active ? { animation: 'blink 1s infinite' } : {}} />
+              <span>{emergencyState.active ? 'דיווח חירום פעיל!' : 'בדיקת חירום'}</span>
+            </button>
+          )}
         </div>
       </nav>
 

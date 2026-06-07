@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
 import { UserPlus, Edit2, Trash2, X, Save, AlertTriangle, UserCheck, RotateCcw } from 'lucide-react';
 
-const StudentManager = ({ students, onSaveStudents, onResetStudents }) => {
+const StudentManager = ({ students, onSaveStudents, onResetStudents, user }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDorm, setSelectedDorm] = useState('הכל');
+  const [selectedDorm, setSelectedDorm] = useState(() => {
+    if (user && user.group && user.group !== 'כללי') {
+      return user.group;
+    }
+    return 'הכל';
+  });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
 
@@ -138,25 +143,27 @@ const StudentManager = ({ students, onSaveStudents, onResetStudents }) => {
 
         {/* כפתורים */}
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <button 
-            type="button" 
-            className="btn-secondary" 
-            onClick={handleResetToDefaults}
-            style={{ 
-              backgroundColor: 'rgba(239, 68, 68, 0.08)', 
-              color: '#fca5a5', 
-              borderColor: 'rgba(239, 68, 68, 0.2)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '0.5rem 0.85rem',
-              fontSize: '0.9rem',
-              borderRadius: 'var(--radius-md)'
-            }}
-          >
-            <RotateCcw size={16} />
-            <span>אתחל חניכי ברירת מחדל</span>
-          </button>
+          {user?.role === 'admin' && (
+            <button 
+              type="button" 
+              className="btn-secondary" 
+              onClick={handleResetToDefaults}
+              style={{ 
+                backgroundColor: 'rgba(239, 68, 68, 0.08)', 
+                color: '#fca5a5', 
+                borderColor: 'rgba(239, 68, 68, 0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '0.5rem 0.85rem',
+                fontSize: '0.9rem',
+                borderRadius: 'var(--radius-md)'
+              }}
+            >
+              <RotateCcw size={16} />
+              <span>אתחל חניכי ברירת מחדל</span>
+            </button>
+          )}
 
           <button type="button" className="btn-primary" onClick={handleOpenAddModal}>
             <UserPlus size={18} />

@@ -2,7 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Check, X, PlaneTakeoff, Save, Search, User, Filter, AlertTriangle } from 'lucide-react';
 
 const RollCall = ({ students, history, onSaveAttendance, initialDormFilter, clearInitialDormFilter, user }) => {
-  const [selectedDorm, setSelectedDorm] = useState('הכל');
+  const [selectedDorm, setSelectedDorm] = useState(() => {
+    if (initialDormFilter) {
+      return initialDormFilter;
+    }
+    if (user && user.group && user.group !== 'כללי') {
+      return user.group;
+    }
+    return 'הכל';
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [session, setSession] = useState('evening'); // ברירת מחדל רישום ערב
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -17,13 +25,15 @@ const RollCall = ({ students, history, onSaveAttendance, initialDormFilter, clea
   }, [user]);
 
 
-  // סנכרון פילטר בית מהדאשבורד במידה והשתמשו בו
+  // סנכרון פילטר בית מהדאשבורד במידה והשתמשו בו, או בחירת קבוצת המדריך כברירת מחדל
   useEffect(() => {
     if (initialDormFilter) {
       setSelectedDorm(initialDormFilter);
       clearInitialDormFilter();
+    } else if (user && user.group && user.group !== 'כללי') {
+      setSelectedDorm(user.group);
     }
-  }, [initialDormFilter]);
+  }, [initialDormFilter, user?.group, clearInitialDormFilter]);
 
   // טעינת רשומת נוכחות קיימת לתאריך ולסשן הנבחרים, או אתחול ברירת מחדל
   useEffect(() => {
@@ -59,7 +69,6 @@ const RollCall = ({ students, history, onSaveAttendance, initialDormFilter, clea
     }
 
     onSaveAttendance(date, session, tempRecords, markedBy);
-    alert('רישום הנוכחות נשמר בהצלחה ב-LocalStorage!');
   };
 
   // סינון חניכים לפי בית וחיפוש
