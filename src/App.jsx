@@ -5,7 +5,8 @@ import {
   Users, 
   AlertTriangle,
   Flame,
-  CloudLightning
+  CloudLightning,
+  UserCheck
 } from 'lucide-react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -13,6 +14,9 @@ import RollCall from './components/RollCall';
 import EmergencyMode from './components/EmergencyMode';
 import StudentManager from './components/StudentManager';
 import Login from './components/Login';
+import NameSetup from './components/NameSetup';
+import GroupPending from './components/GroupPending';
+import StaffManager from './components/StaffManager';
 import { 
   subscribeToStudents, 
   saveStudents, 
@@ -20,7 +24,9 @@ import {
   saveAttendanceRecord, 
   subscribeToEmergency, 
   saveEmergencyState,
-  getOrCreateUserRole
+  getOrCreateUserRole,
+  updateUserProfile,
+  subscribeToUserProfile
 } from './utils/storage';
 import { auth, isFirebaseConfigured } from './utils/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -42,6 +48,7 @@ function App() {
     let unsubscribeStudents = () => {};
     let unsubscribeHistory = () => {};
     let unsubscribeEmergency = () => {};
+    let unsubscribeUserProfile = () => {};
 
     const startSubscriptions = () => {
       // 1. האזנה לחניכים
@@ -67,20 +74,28 @@ function App() {
         if (firebaseUser) {
           setLoading(true);
           try {
-            const role = await getOrCreateUserRole(firebaseUser.uid, {
+            // וידוא יצירת הפרופיל ב-Firestore
+            await getOrCreateUserRole(firebaseUser.uid, {
               displayName: firebaseUser.displayName,
               email: firebaseUser.email,
               photoURL: firebaseUser.photoURL
             });
             
-            setUser({
-              uid: firebaseUser.uid,
-              displayName: firebaseUser.displayName || 'מדריך צפית',
-              email: firebaseUser.email,
-              photoURL: firebaseUser.photoURL || '',
-              role: role,
-              isDemo: false
+            // האזנה לפרופיל המשתמש המחובר בזמן אמת לעדכוני קבוצה/תפקיד
+            unsubscribeUserProfile = subscribeToUserProfile(firebaseUser.uid, (profileData) => {
+              setUser({
+                uid: firebaseUser.uid,
+                displayName: profileData.displayName || firebaseUser.displayName || 'מדריך צפית',
+                email: profileData.email || firebaseUser.email,
+                photoURL: profileData.photoURL || firebaseUser.photoURL || '',
+                role: profileData.role || 'counselor',
+                group: profileData.group || '',
+                needsNameSetup: profileData.needsNameSetup !== undefined ? profileData.needsNameSetup : false,
+                isDemo: false
+              });
+              setLoading(false);
             });
+
             startSubscriptions();
           } catch (err) {
             console.error("שגיאה בקריאת פרטי הרשאות משתמש:", err);
@@ -98,12 +113,29 @@ function App() {
         unsubscribeStudents();
         unsubscribeHistory();
         unsubscribeEmergency();
+        unsubscribeUserProfile();
       };
     } else {
       // מצב דמו / LocalStorage
       const cachedDemoUser = sessionStorage.getItem('tzafit_demo_user');
       if (cachedDemoUser) {
-        setUser(JSON.parse(cachedDemoUser));
+        const parsedUser = JSON.parse(cachedDemoUser);
+        
+        // האזנה לפרופיל המשתמש בדמו למקרה שהמנהל מקצה קבוצה בדמו
+        unsubscribeUserProfile = subscribeToUserProfile(parsedUser.uid, (profileData) => {
+          setUser({
+            uid: parsedUser.uid,
+            displayName: profileData.displayName || parsedUser.displayName,
+            email: profileData.email || parsedUser.email,
+            photoURL: profileData.photoURL || parsedUser.photoURL,
+            role: profileData.role || parsedUser.role,
+            group: profileData.group !== undefined ? profileData.group : parsedUser.group,
+            needsNameSetup: profileData.needsNameSetup !== undefined ? profileData.needsNameSetup : parsedUser.needsNameSetup,
+            isDemo: true
+          });
+          setLoading(false);
+        });
+
         startSubscriptions();
       } else {
         setUser(null);
@@ -114,6 +146,7 @@ function App() {
         unsubscribeStudents();
         unsubscribeHistory();
         unsubscribeEmergency();
+        unsubscribeUserProfile();
       };
     }
   }, [user?.uid]);
@@ -210,6 +243,24 @@ function App() {
     setUser(loggedInUser);
   };
 
+  // טיפול בעדכון שם משתמש ראשוני
+  const handleUpdateName = async (newName) => {
+    try {
+      await updateUserProfile(user.uid, {
+        displayName: newName,
+        needsNameSetup: false
+      });
+      setUser(prev => ({
+        ...prev,
+        displayName: newName,
+        needsNameSetup: false
+      }));
+    } catch (error) {
+      console.error("שגיאה בעדכון השם:", error);
+      throw error;
+    }
+  };
+
   // התנתקות מהמערכת
   const handleLogout = async () => {
     if (window.confirm('האם אתה בטוח שברצונך להתנתק?')) {
@@ -272,6 +323,12 @@ function App() {
             onSaveStudents={handleSaveStudents} 
           />
         );
+      case 'staff':
+        if (user?.role !== 'admin') {
+          setActiveTab('rollcall');
+          return null;
+        }
+        return <StaffManager />;
       default:
         return <RollCall students={students} history={history} onSaveAttendance={handleSaveAttendance} initialDormFilter={dormFilter} clearInitialDormFilter={clearInitialDormFilter} user={user} />;
     }
@@ -317,6 +374,16 @@ function App() {
   // אם המשתמש אינו מחובר, נציג את דף ההתחברות היוקרתי
   if (!user) {
     return <Login onLogin={handleLoginSuccess} />;
+  }
+
+  // אם המשתמש מחובר אך טרם הגדיר שם תצוגה מותאם אישית
+  if (user.needsNameSetup) {
+    return <NameSetup user={user} onSave={handleUpdateName} />;
+  }
+
+  // אם המשתמש מחובר (מדריך) אך טרם הוקצתה לו קבוצת עבודה על ידי המנהל
+  if (user.role !== 'admin' && !user.group) {
+    return <GroupPending user={user} onLogout={handleLogout} />;
   }
 
   return (
@@ -409,6 +476,17 @@ function App() {
             >
               <Users size={18} />
               <span>ניהול חניכים</span>
+            </button>
+          )}
+
+          {user?.role === 'admin' && (
+            <button 
+              type="button"
+              className={`nav-item ${activeTab === 'staff' ? 'active' : ''}`}
+              onClick={() => setActiveTab('staff')}
+            >
+              <UserCheck size={18} />
+              <span>ניהול צוות</span>
             </button>
           )}
 

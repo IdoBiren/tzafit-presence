@@ -123,7 +123,7 @@ const StudentManager = ({ students, onSaveStudents }) => {
           >
             <option value="הכל">כל הקבוצות</option>
             <option value="קסיופיה">קסיופיה</option>
-            <option value="גלפגוס">גלפגוס</option>
+            <option value="קומביין">קומביין</option>
             <option value="מונסון">מונסון</option>
             <option value="אוטופיה">אוטופיה</option>
           </select>
@@ -194,7 +194,7 @@ const StudentManager = ({ students, onSaveStudents }) => {
               {filteredStudents.map(student => {
                 const getDormColor = (dormName) => {
                   if (dormName === 'קסיופיה') return '#3b82f6';
-                  if (dormName === 'גלפגוס') return '#10b981';
+                  if (dormName === 'קומביין') return '#10b981';
                   if (dormName === 'מונסון') return '#d97706';
                   return '#8b5cf6'; // אוטופיה
                 };
@@ -303,7 +303,7 @@ const StudentManager = ({ students, onSaveStudents }) => {
                     onChange={(e) => setFormDorm(e.target.value)}
                   >
                     <option value="קסיופיה">קסיופיה</option>
-                    <option value="גלפגוס">גלפגוס</option>
+                    <option value="קומביין">קומביין</option>
                     <option value="מונסון">מונסון</option>
                     <option value="אוטופיה">אוטופיה</option>
                   </select>

@@ -81,7 +81,7 @@ const RollCall = ({ students, history, onSaveAttendance, initialDormFilter, clea
 
   const getDormLabelColor = (dorm) => {
     if (dorm === 'קסיופיה') return '#3b82f6';
-    if (dorm === 'גלפגוס') return '#10b981';
+    if (dorm === 'קומביין') return '#10b981';
     if (dorm === 'מונסון') return '#d97706';
     return '#8b5cf6'; // אוטופיה
   };
@@ -113,7 +113,7 @@ const RollCall = ({ students, history, onSaveAttendance, initialDormFilter, clea
                   onClick={() => setSession('morning')}
                   style={{ flex: 1, minWidth: '70px', padding: '0.5rem 0.5rem', fontSize: '0.82rem' }}
                 >
-                  בוקר
+                  פתיחת יום
                 </button>
                 <button 
                   type="button" 
@@ -121,7 +121,7 @@ const RollCall = ({ students, history, onSaveAttendance, initialDormFilter, clea
                   onClick={() => setSession('afternoon')}
                   style={{ flex: 1, minWidth: '70px', padding: '0.5rem 0.5rem', fontSize: '0.82rem' }}
                 >
-                  צהריים
+                  ארוחת ערב
                 </button>
                 <button 
                   type="button" 
@@ -129,7 +129,7 @@ const RollCall = ({ students, history, onSaveAttendance, initialDormFilter, clea
                   onClick={() => setSession('evening')}
                   style={{ flex: 1, minWidth: '70px', padding: '0.5rem 0.5rem', fontSize: '0.82rem' }}
                 >
-                  ערב
+                  כיבוי אורות
                 </button>
                 <button 
                   type="button" 
@@ -171,7 +171,7 @@ const RollCall = ({ students, history, onSaveAttendance, initialDormFilter, clea
           
           {/* Desktop Filter View (Button Group) */}
           <div className="btn-group desktop-only">
-            {['הכל', 'קסיופיה', 'גלפגוס', 'מונסון', 'אוטופיה'].map((dorm) => (
+            {['הכל', 'קסיופיה', 'קומביין', 'מונסון', 'אוטופיה'].map((dorm) => (
               <button 
                 key={dorm} 
                 type="button" 
@@ -193,7 +193,7 @@ const RollCall = ({ students, history, onSaveAttendance, initialDormFilter, clea
           >
             <option value="הכל">כל הקבוצות</option>
             <option value="קסיופיה">קסיופיה</option>
-            <option value="גלפגוס">גלפגוס</option>
+            <option value="קומביין">קומביין</option>
             <option value="מונסון">מונסון</option>
             <option value="אוטופיה">אוטופיה</option>
           </select>

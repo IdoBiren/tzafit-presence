@@ -59,7 +59,7 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
   const overall = calculateOverallStats();
 
   // 3. חלוקת קבוצות וחישוב נתונים לכל קבוצה
-  const groups = ["קסיופיה", "גלפגוס", "מונסון", "אוטופיה"];
+  const groups = ["קסיופיה", "קומביין", "מונסון", "אוטופיה"];
   
   const groupData = groups.map(groupName => {
     const groupStudents = students.filter(s => s.dorm === groupName);
@@ -98,9 +98,9 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
   };
 
   const getSessionName = (session) => {
-    if (session === 'morning') return 'רישום בוקר';
-    if (session === 'afternoon') return 'רישום צהריים';
-    if (session === 'evening') return 'רישום ערב';
+    if (session === 'morning') return 'רישום פתיחת יום';
+    if (session === 'afternoon') return 'רישום ארוחת ערב';
+    if (session === 'evening') return 'רישום כיבוי אורות';
     if (session === 'night') return 'רישום לילה';
     return 'רישום נוכחות';
   };
@@ -135,9 +135,9 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
       const parts = session.date.split('-');
       const shortDate = parts.length === 3 ? `${parts[2]}/${parts[1]}` : session.date;
       let sessionLabel = 'סבב';
-      if (session.session === 'morning') sessionLabel = 'בוקר';
-      else if (session.session === 'afternoon') sessionLabel = 'צהריים';
-      else if (session.session === 'evening') sessionLabel = 'ערב';
+      if (session.session === 'morning') sessionLabel = 'פתיחת יום';
+      else if (session.session === 'afternoon') sessionLabel = 'ארוחת ערב';
+      else if (session.session === 'evening') sessionLabel = 'כיבוי אורות';
       else if (session.session === 'night') sessionLabel = 'לילה';
 
       return {
@@ -202,9 +202,9 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
 
     history.forEach(session => {
       let sessionName = 'רישום נוכחות';
-      if (session.session === 'morning') sessionName = 'רישום בוקר';
-      else if (session.session === 'afternoon') sessionName = 'רישום צהריים';
-      else if (session.session === 'evening') sessionName = 'רישום ערב';
+      if (session.session === 'morning') sessionName = 'רישום פתיחת יום';
+      else if (session.session === 'afternoon') sessionName = 'רישום ארוחת ערב';
+      else if (session.session === 'evening') sessionName = 'רישום כיבוי אורות';
       else if (session.session === 'night') sessionName = 'רישום לילה';
       
       students.forEach(student => {

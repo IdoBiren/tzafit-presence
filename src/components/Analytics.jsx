@@ -45,7 +45,11 @@ const Analytics = ({ students, history }) => {
       // עיצוב תאריך וסוג
       const parts = session.date.split('-');
       const shortDate = parts.length === 3 ? `${parts[2]}/${parts[1]}` : session.date;
-      const sessionLabel = session.session === 'morning' ? 'בוקר' : 'ערב';
+      let sessionLabel = 'סבב';
+      if (session.session === 'morning') sessionLabel = 'פתיחת יום';
+      else if (session.session === 'afternoon') sessionLabel = 'ארוחת ערב';
+      else if (session.session === 'evening') sessionLabel = 'כיבוי אורות';
+      else if (session.session === 'night') sessionLabel = 'לילה';
 
       return {
         label: `${shortDate} (${sessionLabel})`,
@@ -112,7 +116,11 @@ const Analytics = ({ students, history }) => {
 
     // בניית השורות
     history.forEach(session => {
-      const sessionName = session.session === 'morning' ? 'רישום בוקר' : 'רישום ערב';
+      let sessionName = 'רישום נוכחות';
+      if (session.session === 'morning') sessionName = 'רישום פתיחת יום';
+      else if (session.session === 'afternoon') sessionName = 'רישום ארוחת ערב';
+      else if (session.session === 'evening') sessionName = 'רישום כיבוי אורות';
+      else if (session.session === 'night') sessionName = 'רישום לילה';
       
       students.forEach(student => {
         const statusVal = session.records[student.id] || 'present';

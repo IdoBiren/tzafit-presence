@@ -138,9 +138,9 @@ const EmergencyMode = ({ students, history, emergencyState, onSaveEmergencyState
           const latestRecord = history && history.length > 0 ? history[0] : null;
           let sessionName = '';
           if (latestRecord) {
-            if (latestRecord.session === 'morning') sessionName = 'רישום בוקר';
-            else if (latestRecord.session === 'afternoon') sessionName = 'רישום צהריים';
-            else if (latestRecord.session === 'evening') sessionName = 'רישום ערב';
+            if (latestRecord.session === 'morning') sessionName = 'רישום פתיחת יום';
+            else if (latestRecord.session === 'afternoon') sessionName = 'רישום ארוחת ערב';
+            else if (latestRecord.session === 'evening') sessionName = 'רישום כיבוי אורות';
             else if (latestRecord.session === 'night') sessionName = 'רישום לילה';
           }
           const recordDate = latestRecord ? latestRecord.date.split('-').reverse().join('/') : '';

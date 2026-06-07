@@ -6,16 +6,9 @@ const Header = ({ emergencyActive, onToggleEmergency, user, onLogout }) => {
     <header className={`header-wrapper ${emergencyActive ? 'emergency-active' : ''}`}>
       <div className="header-content">
         <div className="header-brand">
-          <div className="header-logo">צ</div>
           <div className="header-title">
-            <h1>
-              נוכחות פנימיית צפית
-              <span>פנל מדריך</span>
-            </h1>
+            <h1>נוכחות</h1>
           </div>
-        </div>
-
-        <div className="header-meta" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           {/* פרטי משתמש והתנתקות */}
           {user && (
             <div style={styles.userProfile}>
@@ -48,7 +41,9 @@ const Header = ({ emergencyActive, onToggleEmergency, user, onLogout }) => {
               </div>
             </div>
           )}
+        </div>
 
+        <div className="header-meta" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           {/* כפתור הפעלת חירום - למנהלים בלבד */}
           {user?.role === 'admin' && (
             <button 
@@ -80,9 +75,9 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '0.6rem',
-    marginLeft: '0.5rem',
-    paddingLeft: '1rem',
-    borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
+    marginRight: '0.75rem',
+    paddingRight: '0.75rem',
+    borderRight: '1px solid rgba(255, 255, 255, 0.15)',
   },
   avatar: {
     width: '36px',
