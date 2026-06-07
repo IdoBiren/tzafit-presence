@@ -14,6 +14,7 @@ import {
   CheckCircle, 
   Award 
 } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
   // קבלת הרשומה האחרונה ביותר לחישוב נוכחות עדכני
@@ -67,6 +68,7 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
     let present = 0;
     let absent = 0;
     let leave = 0;
+    let unmarked = 0;
 
     if (latestRecord) {
       groupStudents.forEach(s => {
@@ -74,13 +76,20 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
         if (status === 'present') present++;
         else if (status === 'absent') absent++;
         else if (status === 'leave') leave++;
-        else absent++;
+        else unmarked++;
       });
     } else {
-      absent = total;
+      unmarked = total;
     }
 
     const presenceRate = total > 0 ? Math.round((present / total) * 100) : 0;
+
+    const pieData = [
+      { name: 'נוכח', value: present, color: '#10b981' },
+      { name: 'חסר', value: absent, color: '#ef4444' },
+      { name: 'בבית', value: leave, color: '#f59e0b' },
+      { name: 'טרם סומן', value: unmarked, color: '#94a3b8' }
+    ].filter(item => item.value > 0);
 
     return {
       name: groupName,
@@ -88,7 +97,9 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
       present,
       absent,
       leave,
-      presenceRate
+      unmarked,
+      presenceRate,
+      pieData
     };
   });
 
@@ -317,36 +328,17 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
         {/* טור ימין: מצב קבוצות + גרף מגמות */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           
-          {/* כרטיס מצב הקבוצות */}
+          {/* כרטיס מצב הקבוצות ותרשימי עוגה */}
           <div className="card">
             <h3 style={{ fontWeight: 800, fontSize: '1.2rem', color: 'var(--primary)', marginBottom: '1.25rem' }}>
-              מצב הקבוצות בפנימייה
+              מצב הקבוצות בפנימייה (בזמן אמת)
             </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
               {groupData.map((group, index) => (
-                <div key={index} className="group-status-card">
-                  <div className="group-status-info">
-                    <h4 style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--primary)' }}>{group.name}</h4>
-                    <div className="group-status-stats">
-                      <span>חניכים: <strong>{group.total}</strong></span>
-                      <span style={{ color: 'var(--present)' }}>נוכחים: <strong>{group.present}</strong></span>
-                      <span style={{ color: 'var(--absent)' }}>חסרים: <strong>{group.absent}</strong></span>
-                      <span style={{ color: 'var(--leave)' }}>בבית: <strong>{group.leave}</strong></span>
-                    </div>
-                  </div>
-                  
-                  <div className="group-status-actions">
-                    <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>אחוז נוכחות</div>
-                      <div style={{ 
-                        fontSize: '1.3rem', 
-                        fontWeight: 800, 
-                        color: group.presenceRate >= 90 ? 'var(--present)' : group.presenceRate >= 80 ? 'var(--leave)' : 'var(--absent)' 
-                      }}>
-                        {group.presenceRate}%
-                      </div>
-                    </div>
-                    
+                <div key={index} className="card" style={{ padding: '1rem', border: '1px solid var(--border-color)', boxShadow: 'none' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                    <h4 style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--primary)' }}>{group.name}</h4>
                     <button 
                       className="action-btn" 
                       onClick={() => handleDormClick(group.name)}
@@ -354,15 +346,52 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
                         backgroundColor: 'var(--accent-light)', 
                         color: 'var(--accent)', 
                         borderColor: 'transparent',
-                        padding: '0.4rem 0.8rem',
+                        padding: '0.3rem 0.6rem',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.15rem'
+                        gap: '0.15rem',
+                        fontSize: '0.75rem'
                       }}
                     >
                       <span>לרישום</span>
-                      <ChevronLeft size={14} />
+                      <ChevronLeft size={12} />
                     </button>
+                  </div>
+                  
+                  <div style={{ height: '180px', width: '100%' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={group.pieData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={45}
+                          outerRadius={70}
+                          paddingAngle={2}
+                          dataKey="value"
+                        >
+                          {group.pieData.map((entry, idx) => (
+                            <Cell key={`cell-${idx}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          formatter={(value) => [value, 'חניכים']} 
+                          contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'center', marginTop: '0.5rem' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                      סה"כ: {group.total}
+                    </div>
+                    {group.pieData.map((d, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.75rem' }}>
+                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: d.color }}></span>
+                        <span>{d.name} {d.value}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
