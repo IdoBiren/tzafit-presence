@@ -566,3 +566,9 @@ export const subscribeToUserProfile = (uid, onUpdate) => {
   }
 };
 
+// 12. איפוס חניכים לרשימת ברירת המחדל
+export const resetStudentsToDefault = async () => {
+  await saveStudents(MOCK_STUDENTS);
+};
+
+

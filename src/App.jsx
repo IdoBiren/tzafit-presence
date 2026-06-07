@@ -26,7 +26,8 @@ import {
   saveEmergencyState,
   getOrCreateUserRole,
   updateUserProfile,
-  subscribeToUserProfile
+  subscribeToUserProfile,
+  resetStudentsToDefault
 } from './utils/storage';
 import { auth, isFirebaseConfigured } from './utils/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -181,6 +182,18 @@ function App() {
     }
   };
 
+  // אתחול החניכים לרשימת ברירת המחדל
+  const handleResetStudents = async () => {
+    setDbOperating(true);
+    try {
+      await resetStudentsToDefault();
+    } catch (error) {
+      alert("שגיאה באתחול החניכים בענן.");
+    } finally {
+      setDbOperating(false);
+    }
+  };
+
   // שמירת סבב נוכחות חדש בענן
   const handleSaveAttendance = async (date, session, records, markedBy) => {
     setDbOperating(true);
@@ -321,6 +334,7 @@ function App() {
           <StudentManager 
             students={students} 
             onSaveStudents={handleSaveStudents} 
+            onResetStudents={handleResetStudents}
           />
         );
       case 'staff':
