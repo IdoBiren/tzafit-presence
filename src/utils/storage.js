@@ -84,13 +84,47 @@ const MOCK_STUDENTS = [
   { id: "63", name: "שחר יעיש", dorm: "סקויה", room: "207", parentName: "מארק יעיש", parentPhone: "054-1234126", notes: "" },
   { id: "64", name: "שירה מויאל", dorm: "סקויה", room: "207", parentName: "שגיא מויאל", parentPhone: "054-1234127", notes: "" },
 
-  // סהרה (6 חניכים)
-  { id: "65", name: "אביב אוחנה", dorm: "סהרה", room: "302", parentName: "שמעון אוחנה", parentPhone: "052-6655443", notes: "" },
-  { id: "66", name: "יסמין שלם", dorm: "סהרה", room: "302", parentName: "גלית שלם", parentPhone: "050-2211334", notes: "" },
-  { id: "67", name: "רום סגל", dorm: "סהרה", room: "303", parentName: "ברוך סגל", parentPhone: "054-7766554", notes: "" },
-  { id: "68", name: "שירה כץ", dorm: "סהרה", room: "303", parentName: "דפנה כץ", parentPhone: "052-8877665", notes: "" },
-  { id: "69", name: "ניב גלזר", dorm: "סהרה", room: "304", parentName: "אריאל גלזר", parentPhone: "053-9900887", notes: "" },
-  { id: "70", name: "יעל אטיאס", dorm: "סהרה", room: "304", parentName: "מזל אטיאס", parentPhone: "050-9988112", notes: "אישור רפואי לפטור ספורט" }
+  // סהרה (40 חניכים)
+  { id: "65", name: "אופיר דיין", dorm: "סהרה", room: "301", parentName: "אלון דיין", parentPhone: "054-1234201", notes: "" },
+  { id: "66", name: "אור נחליאלי", dorm: "סהרה", room: "301", parentName: "יוסי נחליאלי", parentPhone: "054-1234202", notes: "" },
+  { id: "67", name: "אוריה רוזנפלד הורביץ", dorm: "סהרה", room: "301", parentName: "ברק רוזנפלד", parentPhone: "054-1234203", notes: "" },
+  { id: "68", name: "איתי שפירא", dorm: "סהרה", room: "301", parentName: "רונן שפירא", parentPhone: "054-1234204", notes: "" },
+  { id: "69", name: "איתן חן", dorm: "סהרה", room: "302", parentName: "שמואל חן", parentPhone: "054-1234205", notes: "" },
+  { id: "70", name: "אלה סיבלמן", dorm: "סהרה", room: "302", parentName: "משה סיבלמן", parentPhone: "054-1234206", notes: "" },
+  { id: "71", name: "ארבל ברקאי", dorm: "סהרה", room: "302", parentName: "יאיר ברקאי", parentPhone: "054-1234207", notes: "" },
+  { id: "72", name: "אריאל ראובן", dorm: "סהרה", room: "302", parentName: "דוד ראובן", parentPhone: "054-1234208", notes: "" },
+  { id: "73", name: "בעז שאולסקי", dorm: "סהרה", room: "303", parentName: "גלעד שאולסקי", parentPhone: "054-1234209", notes: "" },
+  { id: "74", name: "גוני אלקלעי", dorm: "סהרה", room: "303", parentName: "אריאל אלקלעי", parentPhone: "054-1234210", notes: "" },
+  { id: "75", name: "גלי פלדמן", dorm: "סהרה", room: "303", parentName: "רפי פלדמן", parentPhone: "054-1234211", notes: "" },
+  { id: "76", name: "הילה אל נוף", dorm: "סהרה", room: "303", parentName: "שרון אל נוף", parentPhone: "054-1234212", notes: "" },
+  { id: "77", name: "הלל אשחר", dorm: "סהרה", room: "304", parentName: "ארז אשחר", parentPhone: "054-1234213", notes: "" },
+  { id: "78", name: "טליה צורף", dorm: "סהרה", room: "304", parentName: "עדי צורף", parentPhone: "054-1234214", notes: "" },
+  { id: "79", name: "יואב לוי", dorm: "סהרה", room: "304", parentName: "רון לוי", parentPhone: "054-1234215", notes: "" },
+  { id: "80", name: "יולי אנגל", dorm: "סהרה", room: "304", parentName: "חגי אנגל", parentPhone: "054-1234216", notes: "" },
+  { id: "81", name: "יערה מושקין", dorm: "סהרה", room: "305", parentName: "אמיר מושקין", parentPhone: "054-1234217", notes: "" },
+  { id: "82", name: "ליהי תמיר", dorm: "סהרה", room: "305", parentName: "ערן תמיר", parentPhone: "054-1234218", notes: "" },
+  { id: "83", name: "מאיה דורון", dorm: "סהרה", room: "305", parentName: "בועז דורון", parentPhone: "054-1234219", notes: "" },
+  { id: "84", name: "מיכאל אלון", dorm: "סהרה", room: "305", parentName: "דניאל אלון", parentPhone: "054-1234220", notes: "" },
+  { id: "85", name: "מעיין גולדשטיין", dorm: "סהרה", room: "306", parentName: "רונן גולדשטיין", parentPhone: "054-1234221", notes: "" },
+  { id: "86", name: "מתן אזולאי", dorm: "סהרה", room: "306", parentName: "ניר אזולאי", parentPhone: "054-1234222", notes: "" },
+  { id: "87", name: "נטע חדד", dorm: "סהרה", room: "306", parentName: "איתי חדד", parentPhone: "054-1234223", notes: "" },
+  { id: "88", name: "נעם אלוש", dorm: "סהרה", room: "306", parentName: "שגיא אלוש", parentPhone: "054-1234224", notes: "" },
+  { id: "89", name: "סהר גר", dorm: "סהרה", room: "307", parentName: "יוסי גר", parentPhone: "054-1234225", notes: "" },
+  { id: "90", name: "סהר עמיתי", dorm: "סהרה", room: "307", parentName: "דרור עמיתי", parentPhone: "054-1234226", notes: "" },
+  { id: "91", name: "עופרי גרוסמן", dorm: "סהרה", room: "307", parentName: "חגי גרוסמן", parentPhone: "054-1234227", notes: "" },
+  { id: "92", name: "עילי בוטלמן", dorm: "סהרה", room: "307", parentName: "רון בוטלמן", parentPhone: "054-1234228", notes: "" },
+  { id: "93", name: "עלמה דסקל", dorm: "סהרה", room: "308", parentName: "רפי דסקל", parentPhone: "054-1234229", notes: "" },
+  { id: "94", name: "עמית ברזילאי", dorm: "סהרה", room: "308", parentName: "מארק ברזילאי", parentPhone: "054-1234230", notes: "" },
+  { id: "95", name: "צור אלון", dorm: "סהרה", room: "308", parentName: "מיכל אלון", parentPhone: "054-1234231", notes: "" },
+  { id: "96", name: "רותם זהבי", dorm: "סהרה", room: "308", parentName: "שגיא זהבי", parentPhone: "054-1234232", notes: "" },
+  { id: "97", name: "רותם רמות", dorm: "סהרה", room: "309", parentName: "יוסי רמות", parentPhone: "054-1234233", notes: "" },
+  { id: "98", name: "שקד אדלר", dorm: "סהרה", room: "309", parentName: "עדי אדלר", parentPhone: "054-1234234", notes: "" },
+  { id: "99", name: "תמר הופמן לוי", dorm: "סהרה", room: "309", parentName: "ברק הופמן", parentPhone: "054-1234235", notes: "" },
+  { id: "100", name: "תמרה אשכנזי", dorm: "סהרה", room: "309", parentName: "רונן אשכנזי", parentPhone: "054-1234236", notes: "" },
+  { id: "101", name: "שחר גוטמן", dorm: "סהרה", room: "310", parentName: "אמיר גוטמן", parentPhone: "054-1234237", notes: "" },
+  { id: "102", name: "אורי פולק", dorm: "סהרה", room: "310", parentName: "יעקב פולק", parentPhone: "054-1234238", notes: "" },
+  { id: "103", name: "נום ונהורסט", dorm: "סהרה", room: "310", parentName: "ברק ונהורסט", parentPhone: "054-1234239", notes: "" }, // user wrote "נועם ונהורסט" - let's make it match
+  { id: "104", name: "יואב אהרון", dorm: "סהרה", room: "310", parentName: "איתי אהרון", parentPhone: "054-1234240", notes: "" }
 ];
 
 // יצירת היסטוריית נוכחות פיקטיבית ל-7 הימים האחרונים (עבור Seeding)
@@ -174,17 +208,17 @@ const seedCloudHistory = async () => {
 };
 
 const initializeLocalStorage = () => {
-  if (!localStorage.getItem("tzafit_students_v5")) {
-    localStorage.setItem("tzafit_students_v5", JSON.stringify(MOCK_STUDENTS));
+  if (!localStorage.getItem("tzafit_students_v6")) {
+    localStorage.setItem("tzafit_students_v6", JSON.stringify(MOCK_STUDENTS));
   }
-  if (!localStorage.getItem("tzafit_history_v5")) {
+  if (!localStorage.getItem("tzafit_history_v6")) {
     const mockHistory = generateMockHistory();
-    localStorage.setItem("tzafit_history_v5", JSON.stringify(mockHistory));
+    localStorage.setItem("tzafit_history_v6", JSON.stringify(mockHistory));
   }
-  if (!localStorage.getItem("tzafit_emergency_v5")) {
-    localStorage.setItem("tzafit_emergency_v5", JSON.stringify({ active: false, triggeredAt: null, records: {}, reason: "" }));
+  if (!localStorage.getItem("tzafit_emergency_v6")) {
+    localStorage.setItem("tzafit_emergency_v6", JSON.stringify({ active: false, triggeredAt: null, records: {}, reason: "" }));
   }
-  if (!localStorage.getItem("tzafit_users_v5")) {
+  if (!localStorage.getItem("tzafit_users_v6")) {
     const mockUsers = [
       {
         uid: "demo-admin-123",
@@ -205,7 +239,7 @@ const initializeLocalStorage = () => {
         needsNameSetup: false
       }
     ];
-    localStorage.setItem("tzafit_users_v5", JSON.stringify(mockUsers));
+    localStorage.setItem("tzafit_users_v6", JSON.stringify(mockUsers));
   }
 };
 
@@ -233,7 +267,7 @@ export const subscribeToStudents = (onUpdate) => {
   } else {
     // Fallback ל-LocalStorage
     initializeLocalStorage();
-    const students = JSON.parse(localStorage.getItem("tzafit_students_v5"));
+    const students = JSON.parse(localStorage.getItem("tzafit_students_v6"));
     onUpdate(students);
     // החזרת פונקציית ביטול האזנה דמי (Dummy Unsubscribe)
     return () => {};
@@ -258,7 +292,7 @@ export const subscribeToHistory = (onUpdate) => {
   } else {
     // Fallback ל-LocalStorage
     initializeLocalStorage();
-    const history = JSON.parse(localStorage.getItem("tzafit_history_v5"));
+    const history = JSON.parse(localStorage.getItem("tzafit_history_v6"));
     onUpdate(history);
     return () => {};
   }
@@ -282,7 +316,7 @@ export const subscribeToEmergency = (onUpdate) => {
   } else {
     // Fallback ל-LocalStorage
     initializeLocalStorage();
-    const emergencyState = JSON.parse(localStorage.getItem("tzafit_emergency_v5"));
+    const emergencyState = JSON.parse(localStorage.getItem("tzafit_emergency_v6"));
     onUpdate(emergencyState);
     return () => {};
   }
@@ -323,7 +357,7 @@ export const saveStudents = async (updatedList) => {
     }
   } else {
     // Fallback ל-LocalStorage
-    localStorage.setItem("tzafit_students_v5", JSON.stringify(updatedList));
+    localStorage.setItem("tzafit_students_v6", JSON.stringify(updatedList));
   }
 };
 
@@ -347,7 +381,7 @@ export const saveAttendanceRecord = async (date, session, records, markedBy) => 
     }
   } else {
     // Fallback ל-LocalStorage
-    const history = JSON.parse(localStorage.getItem("tzafit_history_v5")) || [];
+    const history = JSON.parse(localStorage.getItem("tzafit_history_v6")) || [];
     const existingIndex = history.findIndex(h => h.date === date && h.session === session);
     
     if (existingIndex > -1) {
@@ -356,7 +390,7 @@ export const saveAttendanceRecord = async (date, session, records, markedBy) => 
       history.unshift(record);
     }
     
-    localStorage.setItem("tzafit_history_v5", JSON.stringify(history));
+    localStorage.setItem("tzafit_history_v6", JSON.stringify(history));
   }
 };
 
@@ -371,7 +405,7 @@ export const saveEmergencyState = async (state) => {
     }
   } else {
     // Fallback ל-LocalStorage
-    localStorage.setItem("tzafit_emergency_v5", JSON.stringify(state));
+    localStorage.setItem("tzafit_emergency_v6", JSON.stringify(state));
   }
 };
 
@@ -466,7 +500,7 @@ export const updateUserProfile = async (uid, updates) => {
     
     // נעדכן גם ברשימת המשתמשים הכללית ב-localStorage
     initializeLocalStorage();
-    const usersList = JSON.parse(localStorage.getItem("tzafit_users_v5")) || [];
+    const usersList = JSON.parse(localStorage.getItem("tzafit_users_v6")) || [];
     const userIndex = usersList.findIndex(u => u.uid === uid);
     if (userIndex > -1) {
       usersList[userIndex] = { ...usersList[userIndex], ...updates };
@@ -485,7 +519,7 @@ export const updateUserProfile = async (uid, updates) => {
       };
       usersList.push(newUser);
     }
-    localStorage.setItem("tzafit_users_v5", JSON.stringify(usersList));
+    localStorage.setItem("tzafit_users_v6", JSON.stringify(usersList));
     
     // שליחת אירוע לעדכון רכיבים באותו חלון
     window.dispatchEvent(new Event('storage'));
@@ -511,7 +545,7 @@ export const subscribeToUsers = (onUpdate) => {
   } else {
     initializeLocalStorage();
     const loadUsers = () => {
-      const users = JSON.parse(localStorage.getItem("tzafit_users_v5")) || [];
+      const users = JSON.parse(localStorage.getItem("tzafit_users_v6")) || [];
       users.sort((a, b) => {
         if (!a.group && b.group) return -1;
         if (a.group && !b.group) return 1;
@@ -522,7 +556,7 @@ export const subscribeToUsers = (onUpdate) => {
     loadUsers();
     
     const handleStorageChange = (e) => {
-      if (!e.key || e.key === "tzafit_users_v5") {
+      if (!e.key || e.key === "tzafit_users_v6") {
         loadUsers();
       }
     };
@@ -545,9 +579,9 @@ export const deleteUserRecord = async (uid) => {
     }
   } else {
     initializeLocalStorage();
-    const usersList = JSON.parse(localStorage.getItem("tzafit_users_v5")) || [];
+    const usersList = JSON.parse(localStorage.getItem("tzafit_users_v6")) || [];
     const updatedUsers = usersList.filter(u => u.uid !== uid);
-    localStorage.setItem("tzafit_users_v5", JSON.stringify(updatedUsers));
+    localStorage.setItem("tzafit_users_v6", JSON.stringify(updatedUsers));
     
     window.dispatchEvent(new Event('storage'));
   }
@@ -567,7 +601,7 @@ export const subscribeToUserProfile = (uid, onUpdate) => {
   } else {
     // מצב דמו - האזנה לשינויים ב-localStorage
     const loadUser = () => {
-      const users = JSON.parse(localStorage.getItem("tzafit_users_v5")) || [];
+      const users = JSON.parse(localStorage.getItem("tzafit_users_v6")) || [];
       const user = users.find(u => u.uid === uid);
       if (user) {
         onUpdate(user);
@@ -576,7 +610,7 @@ export const subscribeToUserProfile = (uid, onUpdate) => {
     loadUser();
     
     const handleStorageChange = (e) => {
-      if (!e.key || e.key === "tzafit_users_v5") {
+      if (!e.key || e.key === "tzafit_users_v6") {
         loadUser();
       }
     };
