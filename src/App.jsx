@@ -22,6 +22,7 @@ import {
   saveStudents, 
   subscribeToHistory, 
   saveAttendanceRecord, 
+  updateSingleAttendanceRecord,
   subscribeToEmergency, 
   saveEmergencyState,
   getOrCreateUserRole,
@@ -194,7 +195,7 @@ function App() {
     }
   };
 
-  // שמירת סבב נוכחות חדש בענן
+  // שמירת סבב נוכחות מלא בענן (עדיין רלוונטי לגיבוי או סיום)
   const handleSaveAttendance = async (date, session, records, markedBy) => {
     setDbOperating(true);
     try {
@@ -208,6 +209,17 @@ function App() {
       alert("שגיאה בשמירת סבב הנוכחות. בדוק את החיבור לרשת ונסה שוב.");
     } finally {
       setDbOperating(false);
+    }
+  };
+
+  // עדכון נוכחות של חניך בודד (שמירה אוטומטית / זמן אמת)
+  const handleUpdateSingleAttendance = async (date, session, studentId, status, markedBy) => {
+    // הפעלה מיידית ברקע מבלי לחסום את המשתמש
+    try {
+      await updateSingleAttendanceRecord(date, session, studentId, status, markedBy);
+    } catch (error) {
+      console.error("שגיאה בעדכון נוכחות אוטומטי:", error);
+      // ניתן להוסיף הודעת שגיאה קטנה או Toast כאן אם רוצים
     }
   };
 
@@ -314,6 +326,7 @@ function App() {
             students={students} 
             history={history} 
             onSaveAttendance={handleSaveAttendance} 
+            onUpdateSingleAttendance={handleUpdateSingleAttendance}
             initialDormFilter={dormFilter}
             clearInitialDormFilter={clearInitialDormFilter}
             user={user}
@@ -348,7 +361,7 @@ function App() {
         }
         return <StaffManager />;
       default:
-        return <RollCall students={students} history={history} onSaveAttendance={handleSaveAttendance} initialDormFilter={dormFilter} clearInitialDormFilter={clearInitialDormFilter} user={user} />;
+        return <RollCall students={students} history={history} onSaveAttendance={handleSaveAttendance} onUpdateSingleAttendance={handleUpdateSingleAttendance} initialDormFilter={dormFilter} clearInitialDormFilter={clearInitialDormFilter} user={user} />;
     }
   };
 

@@ -431,6 +431,51 @@ export const saveAttendanceRecord = async (date, session, records, markedBy) => 
   }
 };
 
+// 5.5. עדכון נוכחות לחניך בודד בסבב ספציפי (לשמירה אוטומטית)
+export const updateSingleAttendanceRecord = async (date, session, studentId, status, markedBy) => {
+  const docId = `${date}_${session}`;
+  
+  if (isFirebaseConfigured) {
+    try {
+      const docRef = doc(db, "history", docId);
+      // שימוש ב-merge כדי לעדכן רק את החניך הספציפי בלי לדרוס שינויים של אחרים
+      await setDoc(docRef, {
+        date,
+        session,
+        markedBy,
+        records: {
+          [studentId]: status
+        },
+        timestamp: new Date().toISOString()
+      }, { merge: true });
+    } catch (error) {
+      console.error("שגיאה בעדכון נוכחות לחניך בודד בענן:", error);
+      throw error;
+    }
+  } else {
+    // Fallback ל-LocalStorage
+    const history = JSON.parse(localStorage.getItem("tzafit_history_v7")) || [];
+    let existingIndex = history.findIndex(h => h.date === date && h.session === session);
+    
+    if (existingIndex > -1) {
+      history[existingIndex].records[studentId] = status;
+      history[existingIndex].timestamp = new Date().toISOString();
+      history[existingIndex].markedBy = markedBy;
+    } else {
+      const newRecord = {
+        date,
+        session,
+        records: { [studentId]: status },
+        markedBy,
+        timestamp: new Date().toISOString()
+      };
+      history.unshift(newRecord);
+    }
+    localStorage.setItem("tzafit_history_v7", JSON.stringify(history));
+    window.dispatchEvent(new Event('storage'));
+  }
+};
+
 // 6. שמירת מצב חירום גלובלי
 export const saveEmergencyState = async (state) => {
   if (isFirebaseConfigured) {

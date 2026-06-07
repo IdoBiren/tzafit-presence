@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Check, X, PlaneTakeoff, Save, Search, User, Filter, AlertTriangle } from 'lucide-react';
 
-const RollCall = ({ students, history, onSaveAttendance, initialDormFilter, clearInitialDormFilter, user }) => {
+const RollCall = ({ students, history, onSaveAttendance, onUpdateSingleAttendance, initialDormFilter, clearInitialDormFilter, user }) => {
   const [selectedDorm, setSelectedDorm] = useState(() => {
     if (initialDormFilter) {
       return initialDormFilter;
@@ -57,6 +57,12 @@ const RollCall = ({ students, history, onSaveAttendance, initialDormFilter, clea
       const currentStatus = prev[studentId];
       // אם לוחצים שוב על אותו כפתור מסומן - מורידים את הסימון (מחזירים ל-null)
       const newStatus = currentStatus === status ? null : status;
+      
+      // עדכון אוטומטי מיידי בענן
+      if (onUpdateSingleAttendance) {
+        onUpdateSingleAttendance(date, session, studentId, newStatus, markedBy);
+      }
+      
       return {
         ...prev,
         [studentId]: newStatus
@@ -64,18 +70,6 @@ const RollCall = ({ students, history, onSaveAttendance, initialDormFilter, clea
     });
   };
 
-  const handleSave = (e) => {
-    e.preventDefault();
-    
-    // בדיקה שכל החניכים סומנו
-    const unmarkedStudents = students.filter(s => tempRecords[s.id] === null || tempRecords[s.id] === undefined);
-    if (unmarkedStudents.length > 0) {
-      alert(`שגיאה: ישנם ${unmarkedStudents.length} חניכים שטרם סומנה נוכחותם! נא לסמן את כל החניכים לפני השמירה.`);
-      return;
-    }
-
-    onSaveAttendance(date, session, tempRecords, markedBy);
-  };
 
   // סינון חניכים לפי בית וחיפוש
   const filteredStudents = students.filter(student => {
@@ -123,7 +117,7 @@ const RollCall = ({ students, history, onSaveAttendance, initialDormFilter, clea
   return (
     <div className="rollcall-wrapper">
       <div className="card" style={{ marginBottom: '1.5rem', padding: '1.25rem' }}>
-        <form onSubmit={handleSave} className="rollcall-controls">
+        <div className="rollcall-controls">
           <div className="filters-bar" style={{ gap: '1.25rem' }}>
             {/* בחירת תאריך */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
@@ -185,14 +179,7 @@ const RollCall = ({ students, history, onSaveAttendance, initialDormFilter, clea
             </div>
 
           </div>
-
-          <div>
-            <button type="submit" className="btn-primary">
-              <Save size={18} />
-              <span>שמור רישום נוכחות</span>
-            </button>
-          </div>
-        </form>
+        </div>
       </div>
 
       {/* סרגל סינון וחיפוש חניכים */}
