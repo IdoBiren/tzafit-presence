@@ -9,7 +9,7 @@ const StudentManager = ({ students, onSaveStudents }) => {
 
   // ערכי טופס
   const [formName, setFormName] = useState('');
-  const [formDorm, setFormDorm] = useState('קסיופיה');
+  const [formDorm, setFormDorm] = useState('פניקס');
   const [formRoom, setFormRoom] = useState('');
   const [formParentName, setFormParentName] = useState('');
   const [formParentPhone, setFormParentPhone] = useState('');
@@ -19,7 +19,7 @@ const StudentManager = ({ students, onSaveStudents }) => {
   const handleOpenAddModal = () => {
     setEditingStudent(null);
     setFormName('');
-    setFormDorm('קסיופיה');
+    setFormDorm('פניקס');
     setFormRoom('');
     setFormParentName('');
     setFormParentPhone('');
@@ -122,10 +122,10 @@ const StudentManager = ({ students, onSaveStudents }) => {
             onChange={(e) => setSelectedDorm(e.target.value)}
           >
             <option value="הכל">כל הקבוצות</option>
-            <option value="קסיופיה">קסיופיה</option>
+            <option value="פניקס">פניקס</option>
             <option value="קומביין">קומביין</option>
-            <option value="מונסון">מונסון</option>
-            <option value="אוטופיה">אוטופיה</option>
+            <option value="סקויה">סקויה</option>
+            <option value="סהרה">סהרה</option>
           </select>
         </div>
 
@@ -193,10 +193,10 @@ const StudentManager = ({ students, onSaveStudents }) => {
             <div className="mobile-only student-mobile-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {filteredStudents.map(student => {
                 const getDormColor = (dormName) => {
-                  if (dormName === 'קסיופיה') return '#3b82f6';
+                  if (dormName === 'פניקס') return '#3b82f6';
                   if (dormName === 'קומביין') return '#10b981';
-                  if (dormName === 'מונסון') return '#d97706';
-                  return '#8b5cf6'; // אוטופיה
+                  if (dormName === 'סקויה') return '#d97706';
+                  return '#8b5cf6'; // סהרה
                 };
                 const dormColor = getDormColor(student.dorm);
                 
@@ -302,10 +302,10 @@ const StudentManager = ({ students, onSaveStudents }) => {
                     value={formDorm}
                     onChange={(e) => setFormDorm(e.target.value)}
                   >
-                    <option value="קסיופיה">קסיופיה</option>
+                    <option value="פניקס">פניקס</option>
                     <option value="קומביין">קומביין</option>
-                    <option value="מונסון">מונסון</option>
-                    <option value="אוטופיה">אוטופיה</option>
+                    <option value="סקויה">סקויה</option>
+                    <option value="סהרה">סהרה</option>
                   </select>
                 </div>
 

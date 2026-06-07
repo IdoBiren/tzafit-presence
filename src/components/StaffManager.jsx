@@ -186,10 +186,10 @@ function StaffManager() {
                     >
                       <option value="">-- בחר קבוצה (ממתין להקצאה) --</option>
                       <option value="כללי">כללי (כל הקבוצות / מנהל)</option>
-                      <option value="קסיופיה">קסיופיה</option>
+                      <option value="פניקס">פניקס</option>
                       <option value="קומביין">קומביין</option>
-                      <option value="מונסון">מונסון</option>
-                      <option value="אוטופיה">אוטופיה</option>
+                      <option value="סקויה">סקויה</option>
+                      <option value="סהרה">סהרה</option>
                     </select>
                   </div>
                 </div>

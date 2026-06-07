@@ -80,10 +80,10 @@ const RollCall = ({ students, history, onSaveAttendance, initialDormFilter, clea
   const markedCount = sortedStudents.filter(s => tempRecords[s.id] !== null && tempRecords[s.id] !== undefined).length;
 
   const getDormLabelColor = (dorm) => {
-    if (dorm === 'קסיופיה') return '#3b82f6';
+    if (dorm === 'פניקס') return '#3b82f6';
     if (dorm === 'קומביין') return '#10b981';
-    if (dorm === 'מונסון') return '#d97706';
-    return '#8b5cf6'; // אוטופיה
+    if (dorm === 'סקויה') return '#d97706';
+    return '#8b5cf6'; // סהרה
   };
 
   return (
@@ -171,7 +171,7 @@ const RollCall = ({ students, history, onSaveAttendance, initialDormFilter, clea
           
           {/* Desktop Filter View (Button Group) */}
           <div className="btn-group desktop-only">
-            {['הכל', 'קסיופיה', 'קומביין', 'מונסון', 'אוטופיה'].map((dorm) => (
+            {['הכל', 'פניקס', 'קומביין', 'סקויה', 'סהרה'].map((dorm) => (
               <button 
                 key={dorm} 
                 type="button" 
@@ -192,10 +192,10 @@ const RollCall = ({ students, history, onSaveAttendance, initialDormFilter, clea
             style={{ fontSize: '0.85rem', padding: '0.4rem 0.8rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)' }}
           >
             <option value="הכל">כל הקבוצות</option>
-            <option value="קסיופיה">קסיופיה</option>
+            <option value="פניקס">פניקס</option>
             <option value="קומביין">קומביין</option>
-            <option value="מונסון">מונסון</option>
-            <option value="אוטופיה">אוטופיה</option>
+            <option value="סקויה">סקויה</option>
+            <option value="סהרה">סהרה</option>
           </select>
         </div>
 

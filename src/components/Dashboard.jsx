@@ -59,7 +59,7 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
   const overall = calculateOverallStats();
 
   // 3. חלוקת קבוצות וחישוב נתונים לכל קבוצה
-  const groups = ["קסיופיה", "קומביין", "מונסון", "אוטופיה"];
+  const groups = ["פניקס", "קומביין", "סקויה", "סהרה"];
   
   const groupData = groups.map(groupName => {
     const groupStudents = students.filter(s => s.dorm === groupName);
