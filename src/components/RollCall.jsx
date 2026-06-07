@@ -53,10 +53,15 @@ const RollCall = ({ students, history, onSaveAttendance, initialDormFilter, clea
   }, [date, session, history, students]);
 
   const handleStatusChange = (studentId, status) => {
-    setTempRecords(prev => ({
-      ...prev,
-      [studentId]: status
-    }));
+    setTempRecords(prev => {
+      const currentStatus = prev[studentId];
+      // אם לוחצים שוב על אותו כפתור מסומן - מורידים את הסימון (מחזירים ל-null)
+      const newStatus = currentStatus === status ? null : status;
+      return {
+        ...prev,
+        [studentId]: newStatus
+      };
+    });
   };
 
   const handleSave = (e) => {
