@@ -14,117 +14,146 @@ import {
 } from 'firebase/firestore';
 
 const MOCK_STUDENTS = [
-  // פניקס
-  { id: "1", name: "עומר כהן", dorm: "פניקס", room: "101", parentName: "ישראל כהן", parentPhone: "054-1234567", notes: "רגישות לבוטנים" },
-  { id: "2", name: "נועה לוי", dorm: "פניקס", room: "101", parentName: "שרה לוי", parentPhone: "054-7654321", notes: "" },
-  { id: "3", name: "דניאל מזרחי", dorm: "פניקס", room: "102", parentName: "דוד מזרחי", parentPhone: "052-1112223", notes: "" },
-  { id: "4", name: "מאיה אברהם", dorm: "פניקס", room: "102", parentName: "רחל אברהם", parentPhone: "050-4445556", notes: "אישור תרופתי קבוע" },
-  { id: "5", name: "גיא שפירא", dorm: "פניקס", room: "103", parentName: "אלון שפירא", parentPhone: "054-8889990", notes: "" },
-  { id: "6", name: "יובל גבאי", dorm: "פניקס", room: "103", parentName: "מיכל גבאי", parentPhone: "053-7778889", notes: "" },
+  // פניקס (35 חניכים)
+  { id: "1", name: "ליה אביר", dorm: "פניקס", room: "101", parentName: "רונן אביר", parentPhone: "054-1234301", notes: "" },
+  { id: "2", name: "ארז אברהם", dorm: "פניקס", room: "101", parentName: "איתי אברהם", parentPhone: "054-1234302", notes: "" },
+  { id: "3", name: "גל אלעד", dorm: "פניקס", room: "101", parentName: "מיכל אלעד", parentPhone: "054-1234303", notes: "" },
+  { id: "4", name: "אלונה אשכנזי", dorm: "פניקס", room: "101", parentName: "יוסי אשכנזי", parentPhone: "054-1234304", notes: "" },
+  { id: "5", name: "יותם באום", dorm: "פניקס", room: "102", parentName: "עדי באום", parentPhone: "054-1234305", notes: "" },
+  { id: "6", name: "עומר ברוך", dorm: "פניקס", room: "102", parentName: "רון ברוך", parentPhone: "054-1234306", notes: "" },
+  { id: "7", name: "אביגיל גורן", dorm: "פניקס", room: "102", parentName: "שמואל גורן", parentPhone: "054-1234307", notes: "" },
+  { id: "8", name: "אריאל גורן", dorm: "פניקס", room: "102", parentName: "ארז גורן", parentPhone: "054-1234308", notes: "" },
+  { id: "9", name: "נעם הול", dorm: "פניקס", room: "103", parentName: "רונן הול", parentPhone: "054-1234309", notes: "" },
+  { id: "10", name: "נבו זהבי", dorm: "פניקס", room: "103", parentName: "יאיר זהבי", parentPhone: "054-1234310", notes: "" },
+  { id: "11", name: "מור חלבה", dorm: "פניקס", room: "103", parentName: "גלעד חלבה", parentPhone: "054-1234311", notes: "" },
+  { id: "12", name: "ענבר חצור-אשדוד", dorm: "פניקס", room: "103", parentName: "ניר חצור", parentPhone: "054-1234312", notes: "" },
+  { id: "13", name: "עמית כהן", dorm: "פניקס", room: "104", parentName: "רפי כהן", parentPhone: "054-1234313", notes: "" },
+  { id: "14", name: "נטע כורש", dorm: "פניקס", room: "104", parentName: "שרון כורש", parentPhone: "054-1234314", notes: "" },
+  { id: "15", name: "עומר כפיר", dorm: "פניקס", room: "104", parentName: "ברק כפיר", parentPhone: "054-1234315", notes: "" },
+  { id: "16", name: "אורי לבנה", dorm: "פניקס", room: "104", parentName: "ערן לבנה", parentPhone: "054-1234316", notes: "" },
+  { id: "17", name: "אלה משה", dorm: "פניקס", room: "105", parentName: "אמיר משה", parentPhone: "054-1234317", notes: "" },
+  { id: "18", name: "נוגה פלקר", dorm: "פניקס", room: "105", parentName: "בועז פלקר", parentPhone: "054-1234318", notes: "" },
+  { id: "19", name: "עלמה צייגר", dorm: "פניקס", room: "105", parentName: "דניאל צייגר", parentPhone: "054-1234319", notes: "" },
+  { id: "20", name: "רון קאופמן", dorm: "פניקס", room: "105", parentName: "רונן קאופמן", parentPhone: "054-1234320", notes: "" },
+  { id: "21", name: "דנה חיה קציר", dorm: "פניקס", room: "106", parentName: "ניר קציר", parentPhone: "054-1234321", notes: "" },
+  { id: "22", name: "אורן רמות כהן", dorm: "פניקס", room: "106", parentName: "איתי רמות", parentPhone: "054-1234322", notes: "" },
+  { id: "23", name: "דולב רפופורט", dorm: "פניקס", room: "106", parentName: "שגיא רפופורט", parentPhone: "054-1234323", notes: "" },
+  { id: "24", name: "אייל שלזינגר", dorm: "פניקס", room: "106", parentName: "יוסי שלזינגר", parentPhone: "054-1234324", notes: "" },
+  { id: "25", name: "אוריין שרוני", dorm: "פניקס", room: "107", parentName: "דרור שרוני", parentPhone: "054-1234325", notes: "" },
+  { id: "26", name: "עומרי תורגמן", dorm: "פניקס", room: "107", parentName: "מארק תורגמן", parentPhone: "054-1234326", notes: "" },
+  { id: "27", name: "רננה ויינשטיין", dorm: "פניקס", room: "107", parentName: "שגיא ויינשטיין", parentPhone: "054-1234327", notes: "" },
+  { id: "28", name: "נבו לוי", dorm: "פניקס", room: "107", parentName: "אלון לוי", parentPhone: "054-1234328", notes: "" },
+  { id: "29", name: "יונתן בג'רנו", dorm: "פניקס", room: "108", parentName: "יוסי בג'רנו", parentPhone: "054-1234329", notes: "" },
+  { id: "30", name: "עמית אדלר", dorm: "פניקס", room: "108", parentName: "חגי אדלר", parentPhone: "054-1234330", notes: "" },
+  { id: "31", name: "ארבל", dorm: "פניקס", room: "108", parentName: "מתן ארבל", parentPhone: "054-1234331", notes: "" },
+  { id: "32", name: "הראל שטרן", dorm: "פניקס", room: "108", parentName: "אלי שטרן", parentPhone: "054-1234332", notes: "" },
+  { id: "33", name: "עילי שריג", dorm: "פניקס", room: "109", parentName: "רון שריג", parentPhone: "054-1234333", notes: "" },
+  { id: "34", name: "רומי כץ", dorm: "פניקס", room: "109", parentName: "עידן כץ", parentPhone: "054-1234334", notes: "" },
+  { id: "35", name: "נועם כץ", dorm: "פניקס", room: "109", parentName: "יובל כץ", parentPhone: "054-1234335", notes: "" },
 
   // קומביין (31 חניכים)
-  { id: "7", name: "עומר אשכנזי", dorm: "קומביין", room: "104", parentName: "אריאל אשכנזי", parentPhone: "054-1234001", notes: "" },
-  { id: "8", name: "עלמה בן שימול", dorm: "קומביין", room: "104", parentName: "דוד בן שימול", parentPhone: "054-1234002", notes: "" },
-  { id: "9", name: "גיל ברוג", dorm: "קומביין", room: "104", parentName: "איתי ברוג", parentPhone: "054-1234003", notes: "" },
-  { id: "10", name: "זיו גולדנברג", dorm: "קומביין", room: "104", parentName: "מיכל גולדנברג", parentPhone: "054-1234004", notes: "" },
-  { id: "11", name: "נעמי גר", dorm: "קומביין", room: "105", parentName: "יוסי גר", parentPhone: "054-1234005", notes: "" },
-  { id: "12", name: "תמר הראל", dorm: "קומביין", room: "105", parentName: "עדי הראל", parentPhone: "054-1234006", notes: "" },
-  { id: "13", name: "נעמי וזה", dorm: "קומביין", room: "105", parentName: "רון וזה", parentPhone: "054-1234007", notes: "" },
-  { id: "14", name: "נדב חן", dorm: "קומביין", room: "105", parentName: "שמואל חן", parentPhone: "054-1234008", notes: "" },
-  { id: "15", name: "יוגב טימור", dorm: "קומביין", room: "106", parentName: "ארז טימור", parentPhone: "054-1234009", notes: "" },
-  { id: "16", name: "רוני יניב", dorm: "קומביין", room: "106", parentName: "רונן יניב", parentPhone: "054-1234010", notes: "" },
-  { id: "17", name: "איתמר ישראלי", dorm: "קומביין", room: "106", parentName: "יאיר ישראלי", parentPhone: "054-1234011", notes: "" },
-  { id: "18", name: "איתמר כספי", dorm: "קומביין", room: "106", parentName: "גלעד כספי", parentPhone: "054-1234012", notes: "" },
-  { id: "19", name: "מעיין כץ", dorm: "קומביין", room: "107", parentName: "ניר כץ", parentPhone: "054-1234013", notes: "" },
-  { id: "20", name: "אריאל לפידות", dorm: "קומביין", room: "107", parentName: "רפי לפידות", parentPhone: "054-1234014", notes: "" },
-  { id: "21", name: "תומר מלעי", dorm: "קומביין", room: "107", parentName: "שרון מלעי", parentPhone: "054-1234015", notes: "" },
-  { id: "22", name: "שחר מנשה", dorm: "קומביין", room: "107", parentName: "ברק מנשה", parentPhone: "054-1234016", notes: "" },
-  { id: "23", name: "איילה סלבין", dorm: "קומביין", room: "108", parentName: "ערן סלבין", parentPhone: "054-1234017", notes: "" },
-  { id: "24", name: "רתם סלומון", dorm: "קומביין", room: "108", parentName: "אמיר סלומון", parentPhone: "054-1234018", notes: "" },
-  { id: "25", name: "נדב פלג", dorm: "קומביין", room: "108", parentName: "בועז פלג", parentPhone: "054-1234019", notes: "" },
-  { id: "26", name: "יובל צביאלי", dorm: "קומביין", room: "108", parentName: "דניאל צביאלי", parentPhone: "054-1234020", notes: "" },
-  { id: "27", name: "תומר קוטלר", dorm: "קומביין", room: "108", parentName: "משה קוטלר", parentPhone: "054-1234021", notes: "" },
-  { id: "28", name: "שיר-גני רובינשטיין", dorm: "קומביין", room: "109", parentName: "אלון רובינשטיין", parentPhone: "054-1234022", notes: "" },
-  { id: "29", name: "מיקה ריבק", dorm: "קומביין", room: "109", parentName: "חגי ריבק", parentPhone: "054-1234023", notes: "" },
-  { id: "30", name: "אבישג ריבקין", dorm: "קומביין", room: "109", parentName: "יעקב ריבקין", parentPhone: "054-1234024", notes: "" },
-  { id: "31", name: "שחר שיר", dorm: "קומביין", room: "109", parentName: "אופיר שיר", parentPhone: "054-1234025", notes: "" },
-  { id: "32", name: "נטע סנפיר", dorm: "קומביין", room: "109", parentName: "דרור סנפיר", parentPhone: "054-1234026", notes: "" },
-  { id: "33", name: "אלה קוליש", dorm: "קומביין", room: "110", parentName: "מארק קוליש", parentPhone: "054-1234027", notes: "" },
-  { id: "34", name: "ירדן לובטון", dorm: "קומביין", room: "110", parentName: "שי לובטון", parentPhone: "054-1234028", notes: "" },
-  { id: "35", name: "שחר בן חיים", dorm: "קומביין", room: "110", parentName: "גולן בן חיים", parentPhone: "054-1234029", notes: "" },
-  { id: "36", name: "זיו ברוידא", dorm: "קומביין", room: "110", parentName: "שגיא ברוידא", parentPhone: "054-1234030", notes: "" },
-  { id: "37", name: "נגה הלחמי", dorm: "קומביין", room: "110", parentName: "מתן הלחמי", parentPhone: "054-1234031", notes: "" },
+  { id: "36", name: "עומר אשכנזי", dorm: "קומביין", room: "104", parentName: "אריאל אשכנזי", parentPhone: "054-1234001", notes: "" },
+  { id: "37", name: "עלמה בן שימול", dorm: "קומביין", room: "104", parentName: "דוד בן שימול", parentPhone: "054-1234002", notes: "" },
+  { id: "38", name: "גיל ברוג", dorm: "קומביין", room: "104", parentName: "איתי ברוג", parentPhone: "054-1234003", notes: "" },
+  { id: "39", name: "זיו גולדנברג", dorm: "קומביין", room: "104", parentName: "מיכל גולדנברג", parentPhone: "054-1234004", notes: "" },
+  { id: "40", name: "נעמי גר", dorm: "קומביין", room: "105", parentName: "יוסי גר", parentPhone: "054-1234005", notes: "" },
+  { id: "41", name: "תמר הראל", dorm: "קומביין", room: "105", parentName: "עדי הראל", parentPhone: "054-1234006", notes: "" },
+  { id: "42", name: "נעמי וזה", dorm: "קומביין", room: "105", parentName: "רון וזה", parentPhone: "054-1234007", notes: "" },
+  { id: "43", name: "נדב חן", dorm: "קומביין", room: "105", parentName: "שמואל חן", parentPhone: "054-1234008", notes: "" },
+  { id: "44", name: "יוגב טימור", dorm: "קומביין", room: "106", parentName: "ארז טימור", parentPhone: "054-1234009", notes: "" },
+  { id: "45", name: "רוני יניב", dorm: "קומביין", room: "106", parentName: "רונן יניב", parentPhone: "054-1234010", notes: "" },
+  { id: "46", name: "איתמר ישראלי", dorm: "קומביין", room: "106", parentName: "יאיר ישראלי", parentPhone: "054-1234011", notes: "" },
+  { id: "47", name: "איתמר כספי", dorm: "קומביין", room: "106", parentName: "גלעד כספי", parentPhone: "054-1234012", notes: "" },
+  { id: "48", name: "מעיין כץ", dorm: "קומביין", room: "107", parentName: "ניר כץ", parentPhone: "054-1234013", notes: "" },
+  { id: "49", name: "אריאל לפידות", dorm: "קומביין", room: "107", parentName: "רפי לפידות", parentPhone: "054-1234014", notes: "" },
+  { id: "50", name: "תומר מלעי", dorm: "קומביין", room: "107", parentName: "שרון מלעי", parentPhone: "054-1234015", notes: "" },
+  { id: "51", name: "שחר מנשה", dorm: "קומביין", room: "107", parentName: "ברק מנשה", parentPhone: "054-1234016", notes: "" },
+  { id: "52", name: "איילה סלבין", dorm: "קומביין", room: "108", parentName: "ערן סלבין", parentPhone: "054-1234017", notes: "" },
+  { id: "53", name: "רתם סלומון", dorm: "קומביין", room: "108", parentName: "אמיר סלומון", parentPhone: "054-1234018", notes: "" },
+  { id: "54", name: "נדב פלג", dorm: "קומביין", room: "108", parentName: "בועז פלג", parentPhone: "054-1234019", notes: "" },
+  { id: "55", name: "יובל צביאלי", dorm: "קומביין", room: "108", parentName: "דניאל צביאלי", parentPhone: "054-1234020", notes: "" },
+  { id: "56", name: "תומר קוטלר", dorm: "קומביין", room: "108", parentName: "משה קוטלר", parentPhone: "054-1234021", notes: "" },
+  { id: "57", name: "שיר-גני רובינשטיין", dorm: "קומביין", room: "109", parentName: "אלון רובינשטיין", parentPhone: "054-1234022", notes: "" },
+  { id: "58", name: "מיקה ריבק", dorm: "קומביין", room: "109", parentName: "חגי ריבק", parentPhone: "054-1234023", notes: "" },
+  { id: "59", name: "אבישג ריבקין", dorm: "קומביין", room: "109", parentName: "יעקב ריבקין", parentPhone: "054-1234024", notes: "" },
+  { id: "60", name: "שחר שיר", dorm: "קומביין", room: "109", parentName: "אופיר שיר", parentPhone: "054-1234025", notes: "" },
+  { id: "61", name: "נטע סנפיר", dorm: "קומביין", room: "109", parentName: "דרור סנפיר", parentPhone: "054-1234026", notes: "" },
+  { id: "62", name: "אלה קוליש", dorm: "קומביין", room: "110", parentName: "מארק קוליש", parentPhone: "054-1234027", notes: "" },
+  { id: "63", name: "ירדן לובטון", dorm: "קומביין", room: "110", parentName: "שי לובטון", parentPhone: "054-1234028", notes: "" },
+  { id: "64", name: "שחר בן חיים", dorm: "קומביין", room: "110", parentName: "גולן בן חיים", parentPhone: "054-1234029", notes: "" },
+  { id: "65", name: "זיו ברוידא", dorm: "קומביין", room: "110", parentName: "שגיא ברוידא", parentPhone: "054-1234030", notes: "" },
+  { id: "66", name: "נגה הלחמי", dorm: "קומביין", room: "110", parentName: "מתן הלחמי", parentPhone: "054-1234031", notes: "" },
 
   // סקויה (27 חניכים)
-  { id: "38", name: "אדר קילמן", dorm: "סקויה", room: "201", parentName: "אריאל קילמן", parentPhone: "054-1234101", notes: "" },
-  { id: "39", name: "אלה זינטר", dorm: "סקויה", room: "201", parentName: "דוד זינטר", parentPhone: "054-1234102", notes: "" },
-  { id: "40", name: "גפן שטרן", dorm: "סקויה", room: "201", parentName: "איתי שטרן", parentPhone: "054-1234103", notes: "" },
-  { id: "41", name: "הילי בר", dorm: "סקויה", room: "201", parentName: "מיכל בר", parentPhone: "054-1234104", notes: "" },
-  { id: "42", name: "זהר אלון", dorm: "סקויה", room: "202", parentName: "יוסי אלון", parentPhone: "054-1234105", notes: "" },
-  { id: "43", name: "זהרה בזרנו", dorm: "סקויה", room: "202", parentName: "עדי בזרנו", parentPhone: "054-1234106", notes: "" },
-  { id: "44", name: "טליה אושיעה", dorm: "סקויה", room: "202", parentName: "רון אושיעה", parentPhone: "054-1234107", notes: "" },
-  { id: "45", name: "יעל עמיר", dorm: "סקויה", room: "202", parentName: "שמואל עמיר", parentPhone: "054-1234108", notes: "" },
-  { id: "46", name: "יעלה ברוג", dorm: "סקויה", room: "203", parentName: "ארז ברוג", parentPhone: "054-1234109", notes: "" },
-  { id: "47", name: "ירדן אברהם", dorm: "סקויה", room: "203", parentName: "רונן אברהם", parentPhone: "054-1234110", notes: "" },
-  { id: "48", name: "לי-ים זיו", dorm: "סקויה", room: "203", parentName: "יאיר זיו", parentPhone: "054-1234111", notes: "" },
-  { id: "49", name: "נגה לוי", dorm: "סקויה", room: "203", parentName: "גלעד לוי", parentPhone: "054-1234112", notes: "" },
-  { id: "50", name: "נועה גבעון", dorm: "סקויה", room: "204", parentName: "ניר גבעון", parentPhone: "054-1234113", notes: "" },
-  { id: "51", name: "נטלי דביר", dorm: "סקויה", room: "204", parentName: "רפי דביר", parentPhone: "054-1234114", notes: "" },
-  { id: "52", name: "נעמה פרסקו", dorm: "סקויה", room: "204", parentName: "שרון פרסקו", parentPhone: "054-1234115", notes: "" },
-  { id: "53", name: "עומר לפידות", dorm: "סקויה", room: "204", parentName: "ברק לפידות", parentPhone: "054-1234116", notes: "" },
-  { id: "54", name: "עפרה סלמונה", dorm: "סקויה", room: "205", parentName: "ערן סלמונה", parentPhone: "054-1234117", notes: "" },
-  { id: "55", name: "רומי לוי", dorm: "סקויה", room: "205", parentName: "אמיר לוי", parentPhone: "054-1234118", notes: "" },
-  { id: "56", name: "רון פלד", dorm: "סקויה", room: "205", parentName: "בועז פלד", parentPhone: "054-1234119", notes: "" },
-  { id: "57", name: "שירה רוסו", dorm: "סקויה", room: "205", parentName: "דניאל רוסו", parentPhone: "054-1234120", notes: "" },
-  { id: "58", name: "שירי פייס", dorm: "סקויה", room: "206", parentName: "משה פייס", parentPhone: "054-1234121", notes: "" },
-  { id: "59", name: "תמר דורון", dorm: "סקויה", room: "206", parentName: "אלון דורון", parentPhone: "054-1234122", notes: "" },
-  { id: "60", name: "תמר לבנה", dorm: "סקויה", room: "206", parentName: "חגי לבנה", parentPhone: "054-1234123", notes: "" },
-  { id: "61", name: "עומר טנצר", dorm: "סקויה", room: "206", parentName: "יעקב טנצר", parentPhone: "054-1234124", notes: "" },
-  { id: "62", name: "הילה ברקול", dorm: "סקויה", room: "207", parentName: "דרור ברקול", parentPhone: "054-1234125", notes: "" },
-  { id: "63", name: "שחר יעיש", dorm: "סקויה", room: "207", parentName: "מארק יעיש", parentPhone: "054-1234126", notes: "" },
-  { id: "64", name: "שירה מויאל", dorm: "סקויה", room: "207", parentName: "שגיא מויאל", parentPhone: "054-1234127", notes: "" },
+  { id: "67", name: "אדר קילמן", dorm: "סקויה", room: "201", parentName: "אריאל קילמן", parentPhone: "054-1234101", notes: "" },
+  { id: "68", name: "אלה זינטר", dorm: "סקויה", room: "201", parentName: "דוד זינטר", parentPhone: "054-1234102", notes: "" },
+  { id: "69", name: "גפן שטרן", dorm: "סקויה", room: "201", parentName: "איתי שטרן", parentPhone: "054-1234103", notes: "" },
+  { id: "70", name: "הילי בר", dorm: "סקויה", room: "201", parentName: "מיכל בר", parentPhone: "054-1234104", notes: "" },
+  { id: "71", name: "זהר אלון", dorm: "סקויה", room: "202", parentName: "יוסי אלון", parentPhone: "054-1234105", notes: "" },
+  { id: "72", name: "זהרה בזרנו", dorm: "סקויה", room: "202", parentName: "עדי בזרנו", parentPhone: "054-1234106", notes: "" },
+  { id: "73", name: "טליה אושיעה", dorm: "סקויה", room: "202", parentName: "רון אושיעה", parentPhone: "054-1234107", notes: "" },
+  { id: "74", name: "יעל עמיר", dorm: "סקויה", room: "202", parentName: "שמואל עמיר", parentPhone: "054-1234108", notes: "" },
+  { id: "75", name: "יעלה ברוג", dorm: "סקויה", room: "203", parentName: "ארז ברוג", parentPhone: "054-1234109", notes: "" },
+  { id: "76", name: "ירדן אברהם", dorm: "סקויה", room: "203", parentName: "רונן אברהם", parentPhone: "054-1234110", notes: "" },
+  { id: "77", name: "לי-ים זיו", dorm: "סקויה", room: "203", parentName: "יאיר זיו", parentPhone: "054-1234111", notes: "" },
+  { id: "78", name: "נגה לוי", dorm: "סקויה", room: "203", parentName: "גלעד לוי", parentPhone: "054-1234112", notes: "" },
+  { id: "79", name: "נועה גבעון", dorm: "סקויה", room: "204", parentName: "ניר גבעון", parentPhone: "054-1234113", notes: "" },
+  { id: "80", name: "נטלי דביר", dorm: "סקויה", room: "204", parentName: "רפי דביר", parentPhone: "054-1234114", notes: "" },
+  { id: "81", name: "נעמה פרסקו", dorm: "סקויה", room: "204", parentName: "שרון פרסקו", parentPhone: "054-1234115", notes: "" },
+  { id: "82", name: "עומר לפידות", dorm: "סקויה", room: "204", parentName: "ברק לפידות", parentPhone: "054-1234116", notes: "" },
+  { id: "83", name: "עפרה סלמונה", dorm: "סקויה", room: "205", parentName: "ערן סלמונה", parentPhone: "054-1234117", notes: "" },
+  { id: "84", name: "רומי לוי", dorm: "סקויה", room: "205", parentName: "אמיר לוי", parentPhone: "054-1234118", notes: "" },
+  { id: "85", name: "רון פלד", dorm: "סקויה", room: "205", parentName: "בועז פלד", parentPhone: "054-1234119", notes: "" },
+  { id: "86", name: "שירה רוסו", dorm: "סקויה", room: "205", parentName: "דניאל רוסו", parentPhone: "054-1234120", notes: "" },
+  { id: "87", name: "שירי פייס", dorm: "סקויה", room: "206", parentName: "משה פייס", parentPhone: "054-1234121", notes: "" },
+  { id: "88", name: "תמר דורון", dorm: "סקויה", room: "206", parentName: "אלון דורון", parentPhone: "054-1234122", notes: "" },
+  { id: "89", name: "תמר לבנה", dorm: "סקויה", room: "206", parentName: "חגי לבנה", parentPhone: "054-1234123", notes: "" },
+  { id: "90", name: "עומר טנצר", dorm: "סקויה", room: "206", parentName: "יעקב טנצר", parentPhone: "054-1234124", notes: "" },
+  { id: "91", name: "הילה ברקול", dorm: "סקויה", room: "207", parentName: "דרור ברקול", parentPhone: "054-1234125", notes: "" },
+  { id: "92", name: "שחר יעיש", dorm: "סקויה", room: "207", parentName: "מארק יעיש", parentPhone: "054-1234126", notes: "" },
+  { id: "93", name: "שירה מויאל", dorm: "סקויה", room: "207", parentName: "שגיא מויאל", parentPhone: "054-1234127", notes: "" },
 
   // סהרה (40 חניכים)
-  { id: "65", name: "אופיר דיין", dorm: "סהרה", room: "301", parentName: "אלון דיין", parentPhone: "054-1234201", notes: "" },
-  { id: "66", name: "אור נחליאלי", dorm: "סהרה", room: "301", parentName: "יוסי נחליאלי", parentPhone: "054-1234202", notes: "" },
-  { id: "67", name: "אוריה רוזנפלד הורביץ", dorm: "סהרה", room: "301", parentName: "ברק רוזנפלד", parentPhone: "054-1234203", notes: "" },
-  { id: "68", name: "איתי שפירא", dorm: "סהרה", room: "301", parentName: "רונן שפירא", parentPhone: "054-1234204", notes: "" },
-  { id: "69", name: "איתן חן", dorm: "סהרה", room: "302", parentName: "שמואל חן", parentPhone: "054-1234205", notes: "" },
-  { id: "70", name: "אלה סיבלמן", dorm: "סהרה", room: "302", parentName: "משה סיבלמן", parentPhone: "054-1234206", notes: "" },
-  { id: "71", name: "ארבל ברקאי", dorm: "סהרה", room: "302", parentName: "יאיר ברקאי", parentPhone: "054-1234207", notes: "" },
-  { id: "72", name: "אריאל ראובן", dorm: "סהרה", room: "302", parentName: "דוד ראובן", parentPhone: "054-1234208", notes: "" },
-  { id: "73", name: "בעז שאולסקי", dorm: "סהרה", room: "303", parentName: "גלעד שאולסקי", parentPhone: "054-1234209", notes: "" },
-  { id: "74", name: "גוני אלקלעי", dorm: "סהרה", room: "303", parentName: "אריאל אלקלעי", parentPhone: "054-1234210", notes: "" },
-  { id: "75", name: "גלי פלדמן", dorm: "סהרה", room: "303", parentName: "רפי פלדמן", parentPhone: "054-1234211", notes: "" },
-  { id: "76", name: "הילה אל נוף", dorm: "סהרה", room: "303", parentName: "שרון אל נוף", parentPhone: "054-1234212", notes: "" },
-  { id: "77", name: "הלל אשחר", dorm: "סהרה", room: "304", parentName: "ארז אשחר", parentPhone: "054-1234213", notes: "" },
-  { id: "78", name: "טליה צורף", dorm: "סהרה", room: "304", parentName: "עדי צורף", parentPhone: "054-1234214", notes: "" },
-  { id: "79", name: "יואב לוי", dorm: "סהרה", room: "304", parentName: "רון לוי", parentPhone: "054-1234215", notes: "" },
-  { id: "80", name: "יולי אנגל", dorm: "סהרה", room: "304", parentName: "חגי אנגל", parentPhone: "054-1234216", notes: "" },
-  { id: "81", name: "יערה מושקין", dorm: "סהרה", room: "305", parentName: "אמיר מושקין", parentPhone: "054-1234217", notes: "" },
-  { id: "82", name: "ליהי תמיר", dorm: "סהרה", room: "305", parentName: "ערן תמיר", parentPhone: "054-1234218", notes: "" },
-  { id: "83", name: "מאיה דורון", dorm: "סהרה", room: "305", parentName: "בועז דורון", parentPhone: "054-1234219", notes: "" },
-  { id: "84", name: "מיכאל אלון", dorm: "סהרה", room: "305", parentName: "דניאל אלון", parentPhone: "054-1234220", notes: "" },
-  { id: "85", name: "מעיין גולדשטיין", dorm: "סהרה", room: "306", parentName: "רונן גולדשטיין", parentPhone: "054-1234221", notes: "" },
-  { id: "86", name: "מתן אזולאי", dorm: "סהרה", room: "306", parentName: "ניר אזולאי", parentPhone: "054-1234222", notes: "" },
-  { id: "87", name: "נטע חדד", dorm: "סהרה", room: "306", parentName: "איתי חדד", parentPhone: "054-1234223", notes: "" },
-  { id: "88", name: "נעם אלוש", dorm: "סהרה", room: "306", parentName: "שגיא אלוש", parentPhone: "054-1234224", notes: "" },
-  { id: "89", name: "סהר גר", dorm: "סהרה", room: "307", parentName: "יוסי גר", parentPhone: "054-1234225", notes: "" },
-  { id: "90", name: "סהר עמיתי", dorm: "סהרה", room: "307", parentName: "דרור עמיתי", parentPhone: "054-1234226", notes: "" },
-  { id: "91", name: "עופרי גרוסמן", dorm: "סהרה", room: "307", parentName: "חגי גרוסמן", parentPhone: "054-1234227", notes: "" },
-  { id: "92", name: "עילי בוטלמן", dorm: "סהרה", room: "307", parentName: "רון בוטלמן", parentPhone: "054-1234228", notes: "" },
-  { id: "93", name: "עלמה דסקל", dorm: "סהרה", room: "308", parentName: "רפי דסקל", parentPhone: "054-1234229", notes: "" },
-  { id: "94", name: "עמית ברזילאי", dorm: "סהרה", room: "308", parentName: "מארק ברזילאי", parentPhone: "054-1234230", notes: "" },
-  { id: "95", name: "צור אלון", dorm: "סהרה", room: "308", parentName: "מיכל אלון", parentPhone: "054-1234231", notes: "" },
-  { id: "96", name: "רותם זהבי", dorm: "סהרה", room: "308", parentName: "שגיא זהבי", parentPhone: "054-1234232", notes: "" },
-  { id: "97", name: "רותם רמות", dorm: "סהרה", room: "309", parentName: "יוסי רמות", parentPhone: "054-1234233", notes: "" },
-  { id: "98", name: "שקד אדלר", dorm: "סהרה", room: "309", parentName: "עדי אדלר", parentPhone: "054-1234234", notes: "" },
-  { id: "99", name: "תמר הופמן לוי", dorm: "סהרה", room: "309", parentName: "ברק הופמן", parentPhone: "054-1234235", notes: "" },
-  { id: "100", name: "תמרה אשכנזי", dorm: "סהרה", room: "309", parentName: "רונן אשכנזי", parentPhone: "054-1234236", notes: "" },
-  { id: "101", name: "שחר גוטמן", dorm: "סהרה", room: "310", parentName: "אמיר גוטמן", parentPhone: "054-1234237", notes: "" },
-  { id: "102", name: "אורי פולק", dorm: "סהרה", room: "310", parentName: "יעקב פולק", parentPhone: "054-1234238", notes: "" },
-  { id: "103", name: "נום ונהורסט", dorm: "סהרה", room: "310", parentName: "ברק ונהורסט", parentPhone: "054-1234239", notes: "" }, // user wrote "נועם ונהורסט" - let's make it match
-  { id: "104", name: "יואב אהרון", dorm: "סהרה", room: "310", parentName: "איתי אהרון", parentPhone: "054-1234240", notes: "" }
+  { id: "94", name: "אופיר דיין", dorm: "סהרה", room: "301", parentName: "אלון דיין", parentPhone: "054-1234201", notes: "" },
+  { id: "95", name: "אור נחליאלי", dorm: "סהרה", room: "301", parentName: "יוסי נחליאלי", parentPhone: "054-1234202", notes: "" },
+  { id: "96", name: "אוריה רוזנפלד הורביץ", dorm: "סהרה", room: "301", parentName: "ברק רוזנפלד", parentPhone: "054-1234203", notes: "" },
+  { id: "97", name: "איתי שפירא", dorm: "סהרה", room: "301", parentName: "רונן שפירא", parentPhone: "054-1234204", notes: "" },
+  { id: "98", name: "איתן חן", dorm: "סהרה", room: "302", parentName: "שמואל חן", parentPhone: "054-1234205", notes: "" },
+  { id: "99", name: "אלה סיבלמן", dorm: "סהרה", room: "302", parentName: "משה סיבלמן", parentPhone: "054-1234206", notes: "" },
+  { id: "100", name: "ארבל ברקאי", dorm: "סהרה", room: "302", parentName: "יאיר ברקאי", parentPhone: "054-1234207", notes: "" },
+  { id: "101", name: "אריאל ראובן", dorm: "סהרה", room: "302", parentName: "דוד ראובן", parentPhone: "054-1234208", notes: "" },
+  { id: "102", name: "בעז שאולסקי", dorm: "סהרה", room: "303", parentName: "גלעד שאולסקי", parentPhone: "054-1234209", notes: "" },
+  { id: "103", name: "גוני אלקלעי", dorm: "סהרה", room: "303", parentName: "אריאל אלקלעי", parentPhone: "054-1234210", notes: "" },
+  { id: "104", name: "גלי פלדמן", dorm: "סהרה", room: "303", parentName: "רפי פלדמן", parentPhone: "054-1234211", notes: "" },
+  { id: "105", name: "הילה אל נוף", dorm: "סהרה", room: "303", parentName: "שרון אל נוף", parentPhone: "054-1234212", notes: "" },
+  { id: "106", name: "הלל אשחר", dorm: "סהרה", room: "304", parentName: "ארז אשחר", parentPhone: "054-1234213", notes: "" },
+  { id: "107", name: "טליה צורף", dorm: "סהרה", room: "304", parentName: "עדי צורף", parentPhone: "054-1234214", notes: "" },
+  { id: "108", name: "יואב לוי", dorm: "סהרה", room: "304", parentName: "רון לוי", parentPhone: "054-1234215", notes: "" },
+  { id: "109", name: "יולי אנגל", dorm: "סהרה", room: "304", parentName: "חגי אנגל", parentPhone: "054-1234216", notes: "" },
+  { id: "110", name: "יערה מושקין", dorm: "סהרה", room: "305", parentName: "אמיר מושקין", parentPhone: "054-1234217", notes: "" },
+  { id: "111", name: "ליהי תמיר", dorm: "סהרה", room: "305", parentName: "ערן תמיר", parentPhone: "054-1234218", notes: "" },
+  { id: "112", name: "מאיה דורון", dorm: "סהרה", room: "305", parentName: "בועז דורון", parentPhone: "054-1234219", notes: "" },
+  { id: "113", name: "מיכאל אלון", dorm: "סהרה", room: "305", parentName: "דניאל אלון", parentPhone: "054-1234220", notes: "" },
+  { id: "114", name: "מעיין גולדשטיין", dorm: "סהרה", room: "306", parentName: "רונן גולדשטיין", parentPhone: "054-1234221", notes: "" },
+  { id: "115", name: "מתן אזולאי", dorm: "סהרה", room: "306", parentName: "ניר אזולאי", parentPhone: "054-1234222", notes: "" },
+  { id: "116", name: "נטע חדד", dorm: "סהרה", room: "306", parentName: "איתי חדד", parentPhone: "054-1234223", notes: "" },
+  { id: "117", name: "נעם אלוש", dorm: "סהרה", room: "306", parentName: "שגיא אלוש", parentPhone: "054-1234224", notes: "" },
+  { id: "118", name: "סהר גר", dorm: "סהרה", room: "307", parentName: "יוסי גר", parentPhone: "054-1234225", notes: "" },
+  { id: "119", name: "סהר עמיתי", dorm: "סהרה", room: "307", parentName: "דרור עמיתי", parentPhone: "054-1234226", notes: "" },
+  { id: "120", name: "עופרי גרוסמן", dorm: "סהרה", room: "307", parentName: "חגי גרוסמן", parentPhone: "054-1234227", notes: "" },
+  { id: "121", name: "עילי בוטלמן", dorm: "סהרה", room: "307", parentName: "רון בוטלמן", parentPhone: "054-1234228", notes: "" },
+  { id: "122", name: "עלמה דסקל", dorm: "סהרה", room: "308", parentName: "רפי דסקל", parentPhone: "054-1234229", notes: "" },
+  { id: "123", name: "עמית ברזילאי", dorm: "סהרה", room: "308", parentName: "מארק ברזילאי", parentPhone: "054-1234230", notes: "" },
+  { id: "124", name: "צור אלון", dorm: "סהרה", room: "308", parentName: "מיכל אלון", parentPhone: "054-1234231", notes: "" },
+  { id: "125", name: "רותם זהבי", dorm: "סהרה", room: "308", parentName: "שגיא זהבי", parentPhone: "054-1234232", notes: "" },
+  { id: "126", name: "רותם רמות", dorm: "סהרה", room: "309", parentName: "יוסי רמות", parentPhone: "054-1234233", notes: "" },
+  { id: "127", name: "שקד אדלר", dorm: "סהרה", room: "309", parentName: "עדי אדלר", parentPhone: "054-1234234", notes: "" },
+  { id: "128", name: "תמר הופמן לוי", dorm: "סהרה", room: "309", parentName: "ברק הופמן", parentPhone: "054-1234235", notes: "" },
+  { id: "129", name: "תמרה אשכנזי", dorm: "סהרה", room: "309", parentName: "רונן אשכנזי", parentPhone: "054-1234236", notes: "" },
+  { id: "130", name: "שחר גוטמן", dorm: "סהרה", room: "310", parentName: "אמיר גוטמן", parentPhone: "054-1234237", notes: "" },
+  { id: "131", name: "אורי פולק", dorm: "סהרה", room: "310", parentName: "יעקב פולק", parentPhone: "054-1234238", notes: "" },
+  { id: "132", name: "נועם ונהורסט", dorm: "סהרה", room: "310", parentName: "ברק ונהורסט", parentPhone: "054-1234239", notes: "" },
+  { id: "133", name: "יואב אהרון", dorm: "סהרה", room: "310", parentName: "איתי אהרון", parentPhone: "054-1234240", notes: "" }
 ];
 
 // יצירת היסטוריית נוכחות פיקטיבית ל-7 הימים האחרונים (עבור Seeding)
@@ -208,17 +237,17 @@ const seedCloudHistory = async () => {
 };
 
 const initializeLocalStorage = () => {
-  if (!localStorage.getItem("tzafit_students_v6")) {
-    localStorage.setItem("tzafit_students_v6", JSON.stringify(MOCK_STUDENTS));
+  if (!localStorage.getItem("tzafit_students_v7")) {
+    localStorage.setItem("tzafit_students_v7", JSON.stringify(MOCK_STUDENTS));
   }
-  if (!localStorage.getItem("tzafit_history_v6")) {
+  if (!localStorage.getItem("tzafit_history_v7")) {
     const mockHistory = generateMockHistory();
-    localStorage.setItem("tzafit_history_v6", JSON.stringify(mockHistory));
+    localStorage.setItem("tzafit_history_v7", JSON.stringify(mockHistory));
   }
-  if (!localStorage.getItem("tzafit_emergency_v6")) {
-    localStorage.setItem("tzafit_emergency_v6", JSON.stringify({ active: false, triggeredAt: null, records: {}, reason: "" }));
+  if (!localStorage.getItem("tzafit_emergency_v7")) {
+    localStorage.setItem("tzafit_emergency_v7", JSON.stringify({ active: false, triggeredAt: null, records: {}, reason: "" }));
   }
-  if (!localStorage.getItem("tzafit_users_v6")) {
+  if (!localStorage.getItem("tzafit_users_v7")) {
     const mockUsers = [
       {
         uid: "demo-admin-123",
@@ -239,7 +268,7 @@ const initializeLocalStorage = () => {
         needsNameSetup: false
       }
     ];
-    localStorage.setItem("tzafit_users_v6", JSON.stringify(mockUsers));
+    localStorage.setItem("tzafit_users_v7", JSON.stringify(mockUsers));
   }
 };
 
@@ -267,7 +296,7 @@ export const subscribeToStudents = (onUpdate) => {
   } else {
     // Fallback ל-LocalStorage
     initializeLocalStorage();
-    const students = JSON.parse(localStorage.getItem("tzafit_students_v6"));
+    const students = JSON.parse(localStorage.getItem("tzafit_students_v7"));
     onUpdate(students);
     // החזרת פונקציית ביטול האזנה דמי (Dummy Unsubscribe)
     return () => {};
@@ -292,7 +321,7 @@ export const subscribeToHistory = (onUpdate) => {
   } else {
     // Fallback ל-LocalStorage
     initializeLocalStorage();
-    const history = JSON.parse(localStorage.getItem("tzafit_history_v6"));
+    const history = JSON.parse(localStorage.getItem("tzafit_history_v7"));
     onUpdate(history);
     return () => {};
   }
@@ -316,7 +345,7 @@ export const subscribeToEmergency = (onUpdate) => {
   } else {
     // Fallback ל-LocalStorage
     initializeLocalStorage();
-    const emergencyState = JSON.parse(localStorage.getItem("tzafit_emergency_v6"));
+    const emergencyState = JSON.parse(localStorage.getItem("tzafit_emergency_v7"));
     onUpdate(emergencyState);
     return () => {};
   }
@@ -357,7 +386,7 @@ export const saveStudents = async (updatedList) => {
     }
   } else {
     // Fallback ל-LocalStorage
-    localStorage.setItem("tzafit_students_v6", JSON.stringify(updatedList));
+    localStorage.setItem("tzafit_students_v7", JSON.stringify(updatedList));
   }
 };
 
@@ -381,7 +410,7 @@ export const saveAttendanceRecord = async (date, session, records, markedBy) => 
     }
   } else {
     // Fallback ל-LocalStorage
-    const history = JSON.parse(localStorage.getItem("tzafit_history_v6")) || [];
+    const history = JSON.parse(localStorage.getItem("tzafit_history_v7")) || [];
     const existingIndex = history.findIndex(h => h.date === date && h.session === session);
     
     if (existingIndex > -1) {
@@ -390,7 +419,7 @@ export const saveAttendanceRecord = async (date, session, records, markedBy) => 
       history.unshift(record);
     }
     
-    localStorage.setItem("tzafit_history_v6", JSON.stringify(history));
+    localStorage.setItem("tzafit_history_v7", JSON.stringify(history));
   }
 };
 
@@ -405,7 +434,7 @@ export const saveEmergencyState = async (state) => {
     }
   } else {
     // Fallback ל-LocalStorage
-    localStorage.setItem("tzafit_emergency_v6", JSON.stringify(state));
+    localStorage.setItem("tzafit_emergency_v7", JSON.stringify(state));
   }
 };
 
@@ -500,7 +529,7 @@ export const updateUserProfile = async (uid, updates) => {
     
     // נעדכן גם ברשימת המשתמשים הכללית ב-localStorage
     initializeLocalStorage();
-    const usersList = JSON.parse(localStorage.getItem("tzafit_users_v6")) || [];
+    const usersList = JSON.parse(localStorage.getItem("tzafit_users_v7")) || [];
     const userIndex = usersList.findIndex(u => u.uid === uid);
     if (userIndex > -1) {
       usersList[userIndex] = { ...usersList[userIndex], ...updates };
@@ -519,7 +548,7 @@ export const updateUserProfile = async (uid, updates) => {
       };
       usersList.push(newUser);
     }
-    localStorage.setItem("tzafit_users_v6", JSON.stringify(usersList));
+    localStorage.setItem("tzafit_users_v7", JSON.stringify(usersList));
     
     // שליחת אירוע לעדכון רכיבים באותו חלון
     window.dispatchEvent(new Event('storage'));
@@ -545,7 +574,7 @@ export const subscribeToUsers = (onUpdate) => {
   } else {
     initializeLocalStorage();
     const loadUsers = () => {
-      const users = JSON.parse(localStorage.getItem("tzafit_users_v6")) || [];
+      const users = JSON.parse(localStorage.getItem("tzafit_users_v7")) || [];
       users.sort((a, b) => {
         if (!a.group && b.group) return -1;
         if (a.group && !b.group) return 1;
@@ -556,7 +585,7 @@ export const subscribeToUsers = (onUpdate) => {
     loadUsers();
     
     const handleStorageChange = (e) => {
-      if (!e.key || e.key === "tzafit_users_v6") {
+      if (!e.key || e.key === "tzafit_users_v7") {
         loadUsers();
       }
     };
@@ -579,9 +608,9 @@ export const deleteUserRecord = async (uid) => {
     }
   } else {
     initializeLocalStorage();
-    const usersList = JSON.parse(localStorage.getItem("tzafit_users_v6")) || [];
+    const usersList = JSON.parse(localStorage.getItem("tzafit_users_v7")) || [];
     const updatedUsers = usersList.filter(u => u.uid !== uid);
-    localStorage.setItem("tzafit_users_v6", JSON.stringify(updatedUsers));
+    localStorage.setItem("tzafit_users_v7", JSON.stringify(updatedUsers));
     
     window.dispatchEvent(new Event('storage'));
   }
@@ -601,7 +630,7 @@ export const subscribeToUserProfile = (uid, onUpdate) => {
   } else {
     // מצב דמו - האזנה לשינויים ב-localStorage
     const loadUser = () => {
-      const users = JSON.parse(localStorage.getItem("tzafit_users_v6")) || [];
+      const users = JSON.parse(localStorage.getItem("tzafit_users_v7")) || [];
       const user = users.find(u => u.uid === uid);
       if (user) {
         onUpdate(user);
@@ -610,7 +639,7 @@ export const subscribeToUserProfile = (uid, onUpdate) => {
     loadUser();
     
     const handleStorageChange = (e) => {
-      if (!e.key || e.key === "tzafit_users_v6") {
+      if (!e.key || e.key === "tzafit_users_v7") {
         loadUser();
       }
     };
