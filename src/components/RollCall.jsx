@@ -12,6 +12,7 @@ const RollCall = ({ students, history, onSaveAttendance, initialDormFilter, clea
     return 'הכל';
   });
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('unmarked');
   const [session, setSession] = useState('evening'); // ברירת מחדל רישום ערב
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [markedBy, setMarkedBy] = useState(user ? user.displayName : 'מדריך תורן');
@@ -78,8 +79,27 @@ const RollCall = ({ students, history, onSaveAttendance, initialDormFilter, clea
     return matchesDorm && matchesSearch;
   });
 
-  // סדר לפי חדרים (מהקטן לגדול) לנוחות המדריך בסבב החדרים
-  const sortedStudents = [...filteredStudents].sort((a, b) => a.room.localeCompare(b.room));
+  // סדר חניכים בהתאם לאפשרות המיון שנבחרה (ברירת מחדל: טרם סומנו)
+  const sortedStudents = [...filteredStudents].sort((a, b) => {
+    if (sortBy === 'unmarked') {
+      const aMarked = tempRecords[a.id] !== null && tempRecords[a.id] !== undefined;
+      const bMarked = tempRecords[b.id] !== null && tempRecords[b.id] !== undefined;
+      
+      // מי שלא סומן מופיע ראשון
+      if (aMarked && !bMarked) return 1;
+      if (!aMarked && bMarked) return -1;
+      
+      // מיון משני לפי חדר
+      return a.room.localeCompare(b.room);
+    }
+    
+    if (sortBy === 'name') {
+      return a.name.localeCompare(b.name, 'he');
+    }
+    
+    // ברירת מחדל: לפי חדרים
+    return a.room.localeCompare(b.room);
+  });
 
   // סטטיסטיקות סבב נוכחי למדריך
   const totalCount = sortedStudents.length;
@@ -205,6 +225,23 @@ const RollCall = ({ students, history, onSaveAttendance, initialDormFilter, clea
             <option value="קומביין">קומביין</option>
             <option value="סקויה">סקויה</option>
             <option value="סהרה">סהרה</option>
+          </select>
+        </div>
+
+        {/* מיון חניכים */}
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <span>מיין לפי:</span>
+          </span>
+          <select
+            className="select-input"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            style={{ fontSize: '0.85rem', padding: '0.4rem 0.8rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', backgroundColor: 'white', cursor: 'pointer' }}
+          >
+            <option value="unmarked">טרם סומנו (ראשונים)</option>
+            <option value="name">שם מלא (א-ב)</option>
+            <option value="room">מספר חדר</option>
           </select>
         </div>
 
