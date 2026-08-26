@@ -1,7 +1,7 @@
 import React from 'react';
-import { AlertOctagon, ShieldAlert, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 
-const Header = ({ emergencyActive, onToggleEmergency, user, onLogout }) => {
+const Header = ({ emergencyActive, user, onLogout }) => {
   return (
     <header className={`header-wrapper ${emergencyActive ? 'emergency-active' : ''}`}>
       <div className="header-content">
@@ -40,29 +40,6 @@ const Header = ({ emergencyActive, onToggleEmergency, user, onLogout }) => {
                 </button>
               </div>
             </div>
-          )}
-        </div>
-
-        <div className="header-meta" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          {/* כפתור הפעלת חירום - למנהלים בלבד */}
-          {user?.role === 'admin' && (
-            <button 
-              className={`emergency-btn ${emergencyActive ? 'active' : ''}`}
-              onClick={onToggleEmergency}
-              title={emergencyActive ? "לחיצה תבטל את אירוע החירום ותחזיר את האפליקציה למצב רגיל" : "לחיצה תפעיל מצב נוכחות חירום דחוף"}
-            >
-              {emergencyActive ? (
-                <>
-                  <ShieldAlert size={18} />
-                  <span>ביטול מצב חירום</span>
-                </>
-              ) : (
-                <>
-                  <AlertOctagon size={18} />
-                  <span>הפעל מצב חירום!</span>
-                </>
-              )}
-            </button>
           )}
         </div>
       </div>

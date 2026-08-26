@@ -242,24 +242,6 @@ function App() {
     }
   };
 
-  // שליטה על כפתור החירום העליון בכותרת
-  const handleToggleEmergency = () => {
-    if (emergencyState.active) {
-      // ביטול
-      if (window.confirm('האם ברצונך לבטל את מצב החירום ולחזור לשגרה?')) {
-        handleSaveEmergencyState({
-          active: false,
-          triggeredAt: null,
-          reason: '',
-          records: {}
-        });
-      }
-    } else {
-      // מעבר ללשונית חירום להפעלה
-      setActiveTab('emergency');
-    }
-  };
-
   const clearInitialDormFilter = () => {
     setDormFilter(null);
   };
@@ -448,7 +430,6 @@ function App() {
       {/* כותרת עליונה */}
       <Header 
         emergencyActive={emergencyState.active} 
-        onToggleEmergency={handleToggleEmergency} 
         user={user}
         onLogout={handleLogout}
       />
