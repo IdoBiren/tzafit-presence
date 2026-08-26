@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Users, 
   UserCheck, 
@@ -12,11 +12,14 @@ import {
   UserMinus, 
   Phone, 
   CheckCircle, 
-  Award 
+  Award,
+  X
 } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
+  const [modalData, setModalData] = useState(null); // { groupName, statusName, color }
+
   // קבלת הרשומה האחרונה ביותר לחישוב נוכחות עדכני
   const latestRecord = history && history.length > 0 ? history[0] : null;
   
@@ -249,6 +252,21 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
     document.body.removeChild(link);
   };
 
+  // 7. שליפת חניכים לחלון הצף לפי הקליק בגרף הפאי
+  const getModalStudents = () => {
+    if (!modalData) return [];
+    const groupStudents = students.filter(s => s.dorm === modalData.groupName);
+    
+    return groupStudents.filter(s => {
+      const status = latestRecord ? latestRecord.records[s.id] : null;
+      if (modalData.statusName === 'נוכח') return status === 'present';
+      if (modalData.statusName === 'חסר') return status === 'absent';
+      if (modalData.statusName === 'בבית') return status === 'leave';
+      if (modalData.statusName === 'טרם סומן') return status === null || status === undefined;
+      return false;
+    });
+  };
+
   return (
     <div className="dashboard-wrapper">
       {/* שורת כותרת דאשבורד מאוחדת */}
@@ -369,6 +387,8 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
                           outerRadius={70}
                           paddingAngle={2}
                           dataKey="value"
+                          onClick={(data) => setModalData({ groupName: group.name, statusName: data.name, color: data.payload.color })}
+                          cursor="pointer"
                         >
                           {group.pieData.map((entry, idx) => (
                             <Cell key={`cell-${idx}`} fill={entry.color} />
@@ -616,6 +636,85 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
         </div>
 
       </div>
+
+      {/* חלון צף (Modal) להצגת שמות חניכים מתוך הגרף */}
+      {modalData && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.6)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '1rem'
+        }} onClick={() => setModalData(null)}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '360px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            maxHeight: '85vh'
+          }} onClick={(e) => e.stopPropagation()}>
+            
+            {/* כותרת החלון */}
+            <div style={{ 
+              padding: '1.25rem', 
+              borderBottom: '1px solid var(--border-color)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              backgroundColor: '#f8fafc'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: modalData.color }}></span>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)', margin: 0 }}>
+                  {modalData.groupName} - {modalData.statusName}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setModalData(null)}
+                style={{ 
+                  background: 'none', border: 'none', color: 'var(--text-muted)', 
+                  cursor: 'pointer', padding: '0.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* רשימת שמות */}
+            <div style={{ padding: '0.5rem 0', overflowY: 'auto', flex: 1 }}>
+              {getModalStudents().length > 0 ? (
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                  {getModalStudents().map(student => (
+                    <li key={student.id} style={{ 
+                      padding: '0.75rem 1.25rem', 
+                      borderBottom: '1px solid #f1f5f9',
+                      fontSize: '0.95rem',
+                      fontWeight: 600,
+                      color: 'var(--primary)'
+                    }}>
+                      {student.name}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                  לא נמצאו חניכים בסטטוס זה.
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
