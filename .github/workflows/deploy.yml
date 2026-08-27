@@ -16,7 +16,7 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Fail fast with a readable message rather than shipping a build that
       # quietly lost its Firebase config, or dying inside the deploy action.
@@ -45,7 +45,7 @@ jobs:
           fi
           echo "All required secrets are present."
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
           cache: npm
