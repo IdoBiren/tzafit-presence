@@ -13,6 +13,18 @@ import {
   writeBatch
 } from 'firebase/firestore';
 
+const SESSION_ORDER = { morning: 0, afternoon: 1, evening: 2, night: 3 };
+
+// מיון היסטוריה לפי מתי הסבב התרחש, לא לפי מתי מישהו נגע בו אחרון.
+// updateSingleAttendanceRecord דורס את timestamp בכל לחיצה, ולכן עריכה של
+// סבב ישן הייתה מקפיצה אותו לראש הרשימה וכל מי שקורא history[0] היה מתייחס
+// אליו כמצב הנוכחי. date הוא YYYY-MM-DD, כך שהשוואה לקסיקוגרפית תקפה.
+const sortHistoryChronologically = (list) =>
+  [...list].sort((a, b) => {
+    if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+    return (SESSION_ORDER[b.session] ?? -1) - (SESSION_ORDER[a.session] ?? -1);
+  });
+
 const RAW_STUDENTS = [
   // פניקס (35 חניכים)
   { id: "1", name: "ליה אביר", dorm: "פניקס" },
@@ -321,7 +333,7 @@ export const subscribeToHistory = (onUpdate) => {
         await seedCloudHistory();
       } else {
         const historyList = snapshot.docs.map(d => d.data());
-        onUpdate(historyList);
+        onUpdate(sortHistoryChronologically(historyList));
       }
     }, (error) => {
       console.error("שגיאה בהאזנה להיסטוריה בענן:", error);
@@ -330,7 +342,7 @@ export const subscribeToHistory = (onUpdate) => {
     // Fallback ל-LocalStorage
     initializeLocalStorage();
     const history = JSON.parse(localStorage.getItem("tzafit_history_v7"));
-    onUpdate(history);
+    onUpdate(sortHistoryChronologically(history || []));
     return () => {};
   }
 };
