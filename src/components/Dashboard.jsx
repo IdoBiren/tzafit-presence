@@ -28,6 +28,7 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
   let presentCount = 0;
   let absentCount = 0;
   let leaveCount = 0;
+  let unmarkedCount = 0;
 
   if (latestRecord) {
     students.forEach(student => {
@@ -35,10 +36,11 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
       if (status === 'present') presentCount++;
       else if (status === 'absent') absentCount++;
       else if (status === 'leave') leaveCount++;
-      else absentCount++; // ברירת מחדל
+      else unmarkedCount++;
     });
   } else {
-    absentCount = totalStudents;
+    // לפני שנרשם משהו אף אחד לא "חסר" - פשוט טרם נבדק
+    unmarkedCount = totalStudents;
   }
 
   // 2. חישוב ממוצע נוכחות פנימייתי כולל
@@ -222,8 +224,12 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
       else if (session.session === 'night') sessionName = 'רישום לילה';
       
       students.forEach(student => {
-        const statusVal = session.records[student.id] || 'present';
-        const statusHebrew = statusVal === 'present' ? 'נוכח' : statusVal === 'absent' ? 'לא נוכח' : 'בבית';
+        // חניך שאף אחד לא סימן אינו "נוכח" - דיווח כזה מסוכן בדוח נוכחות
+        const statusVal = session.records[student.id] || null;
+        const statusHebrew =
+          statusVal === 'present' ? 'נוכח' :
+          statusVal === 'absent' ? 'לא נוכח' :
+          statusVal === 'leave' ? 'בבית' : 'טרם סומן';
         
         const row = [
           session.date,
@@ -324,6 +330,17 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
           </div>
           <div className="stat-icon amber">
             <PlaneTakeoff size={22} />
+          </div>
+        </div>
+
+        {/* אותו אפור-סלייט שגרף הפאי משתמש בו לפלח "טרם סומן" */}
+        <div className="card stat-card">
+          <div className="stat-info">
+            <h3>טרם סומנו</h3>
+            <div className="stat-number" style={{ color: '#94a3b8' }}>{unmarkedCount}</div>
+          </div>
+          <div className="stat-icon" style={{ backgroundColor: 'rgba(148, 163, 184, 0.15)', color: '#94a3b8' }}>
+            <UserMinus size={22} />
           </div>
         </div>
 
