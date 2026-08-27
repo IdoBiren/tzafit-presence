@@ -50,7 +50,12 @@ jobs:
           node-version: '24'
           cache: npm
 
-      - run: npm ci
+      # npm ci refuses an out-of-sync lock file, and a lock file generated on
+      # Windows omits the platform-specific @emnapi/* entries the Linux runner
+      # resolves (via @napi-rs/wasm-runtime). npm install reconciles on the
+      # runner instead. Switch back to npm ci if the lock file is ever
+      # regenerated on Linux.
+      - run: npm install --no-audit --no-fund
 
       # Vite inlines these at build time, so they have to be present here --
       # the deployed bundle carries the values. Without them the app falls
