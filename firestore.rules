@@ -1,0 +1,99 @@
+rules_version = '2';
+
+// אכיפת ההרשאות של נוכחות פנימיית צפית.
+//
+// בדיקות התפקיד באפליקציה עצמה הן client-side ומכריעות רק מה ה-UI מציג.
+// הקובץ הזה הוא שכבת האכיפה היחידה שהמשתמש אינו שולט בה.
+//
+// שני עקרונות:
+//   1. "מאושר" = למשתמש הוקצתה קבוצה. נרשם חדש נוצר עם group ריק ואינו
+//      יכול לכתוב דבר עד שאדמין מקצה לו קבוצה.
+//   2. שדות role ו-group אינם ניתנים לכתיבה על ידי בעל המסמך, רק על ידי
+//      אדמין. זה מה שמונע שדרוג עצמי ל-admin מה-console של הדפדפן.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // get() בתוך rules אינו כפוף ל-rules עצמם, ולכן מותר לקרוא כאן את
+    // המסמך של המבקש. עולה קריאת מסמך אחת לבקשה - זניח בהיקף הזה.
+    function me() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && me().role == 'admin';
+    }
+
+    // אם מסמך המשתמש אינו קיים, me() מחזיר null והגישה לשדה נכשלת -
+    // כלומר deny. זה כיוון הכשל הנכון.
+    function isApproved() {
+      return isSignedIn() && me().group != '';
+    }
+
+    // רשימת החניכים: כל מדריך מאושר עורך אותה, לא רק אדמין - מסך ניהול
+    // החניכים אינו מוגן לפי תפקיד באפליקציה, וזה מכוון.
+    // מכאן שכפתור "אפס רשימה" מוגן ב-UI בלבד; rules אינם יכולים להבחין
+    // בין עריכת חניך בודד למחיקה גורפת.
+    match /students/{studentId} {
+      allow read: if isApproved();
+      allow create, update, delete: if isApproved();
+    }
+
+    // היסטוריית הנוכחות. אין תהליך באפליקציה שמוחק סבב, ולכן delete חסום.
+    match /history/{recordId} {
+      allow read: if isApproved();
+      allow create, update: if isApproved();
+      allow delete: if false;
+    }
+
+    // מצב החירום הוא מסמך יחיד משותף.
+    // מדריכים מסמנים חניכים כבטוחים ולכן חייבים הרשאת update - אבל רק
+    // אדמין יכול להפעיל או לכבות את החירום עצמו.
+    match /emergency/{docId} {
+      allow read: if isApproved();
+
+      // האפליקציה יוצרת את המסמך אוטומטית אם הוא חסר, תמיד ככבוי.
+      allow create: if isApproved()
+                    && request.resource.data.active == false;
+
+      allow update: if isAdmin()
+                    || (isApproved()
+                        && request.resource.data.active == resource.data.active
+                        && request.resource.data.reason == resource.data.reason
+                        && request.resource.data.triggeredAt == resource.data.triggeredAt);
+
+      allow delete: if false;
+    }
+
+    match /users/{userId} {
+      // כל אחד קורא את המסמך שלו; סריקת כל המשתמשים היא למסך ניהול הצוות.
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+
+      // נרשם חדש יוצר את המסמך של עצמו - נדרש כדי שההתחברות תעבוד -
+      // אבל מקובע כמדריך בלי קבוצה. התפקיד אינו נתון לבחירת הלקוח.
+      allow create: if isSignedIn()
+                    && request.auth.uid == userId
+                    && request.resource.data.role == 'counselor'
+                    && request.resource.data.group == '';
+
+      // בעל המסמך משנה את שם התצוגה שלו, אך לא את התפקיד או הקבוצה.
+      allow update: if isAdmin()
+                    || (isSignedIn()
+                        && request.auth.uid == userId
+                        && request.resource.data.role == resource.data.role
+                        && request.resource.data.group == resource.data.group);
+
+      allow delete: if isAdmin();
+    }
+
+    // כל השאר חסום במפורש.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
