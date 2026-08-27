@@ -512,26 +512,12 @@ export const getOrCreateUserRole = async (uid, userDetails) => {
       
       if (userDocSnap.exists()) {
         const data = userDocSnap.data();
-        let role = data.role || 'counselor';
-        let group = data.group || '';
-        let needsUpdate = false;
+        const role = data.role || 'counselor';
+        const group = data.group || '';
 
-        // קידום אוטומטי של המשתמש בעל המייל המבוקש למנהל
-        if (data.email && data.email.toLowerCase() === 'idobi.renboim.ido@gmail.com') {
-          if (role !== 'admin') {
-            role = 'admin';
-            needsUpdate = true;
-          }
-          if (group !== 'כללי') {
-            group = 'כללי';
-            needsUpdate = true;
-          }
-        }
-
-        if (needsUpdate) {
-          await setDoc(userDocRef, { role, group }, { merge: true });
-        }
-
+        // התפקיד והקבוצה נקראים מהמסמך ואינם נקבעים כאן. הלקוח אינו
+        // מוסמך לשנות אותם - firestore.rules חוסם זאת - והקצאה נעשית
+        // על ידי אדמין במסך ניהול הצוות.
         return {
           role,
           needsNameSetup: data.needsNameSetup !== undefined ? data.needsNameSetup : false,
@@ -539,9 +525,11 @@ export const getOrCreateUserRole = async (uid, userDetails) => {
         };
       } else {
         const email = userDetails.email || '';
-        const isOwner = email.toLowerCase() === 'idobi.renboim.ido@gmail.com';
-        const role = isOwner ? 'admin' : 'counselor';
-        const group = isOwner ? 'כללי' : ''; // מנהל מקבל 'כללי', מדריך חדש מקבל ריק (ממתין להקצאה)
+        // כל נרשם חדש נוצר כמדריך בלי קבוצה וממתין לאישור אדמין.
+        // firestore.rules מתיר יצירה עצמית רק בערכים האלה בדיוק, כך
+        // שגם לקוח שהשתנה לא יכול להעניק לעצמו תפקיד.
+        const role = 'counselor';
+        const group = '';
 
         const newUser = {
           uid,
