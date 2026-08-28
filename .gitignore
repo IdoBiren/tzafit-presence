@@ -25,3 +25,8 @@ dist-ssr
 
 # Firebase deploy cache
 .firebase
+
+# Firebase emulator debug logs
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
