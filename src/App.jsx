@@ -13,6 +13,7 @@ import RollCall from './components/RollCall';
 import Login from './components/Login';
 import NameSetup from './components/NameSetup';
 import GroupPending from './components/GroupPending';
+import { ToastProvider, useToast } from './components/ToastProvider';
 
 // נטענים על פי דרישה בלבד - כל אחד מהם הוא טאב משני, לא מסך הנחיתה
 // (rollcall) שרוב המדריכים פותחים ראשון. Dashboard סוחב את recharts, תלות
@@ -52,14 +53,16 @@ const TabLoadingFallback = () => (
   </div>
 );
 
-function App() {
+function AppContent() {
+  const { showToast } = useToast();
   const [user, setUser] = useState(null);
   const [students, setStudents] = useState([]);
   const [history, setHistory] = useState([]);
   const [emergencyState, setEmergencyState] = useState({ active: false, records: {}, reason: '', triggeredAt: null });
   const [activeTab, setActiveTab] = useState('rollcall');
+  const [visitedTabs, setVisitedTabs] = useState(() => new Set(['rollcall']));
   const [dormFilter, setDormFilter] = useState(null);
-  
+
   // מחווני טעינה וסנכרון לענן
   const [loading, setLoading] = useState(true);
   const [dbOperating, setDbOperating] = useState(false);
@@ -220,12 +223,11 @@ function App() {
 
   // עדכון נוכחות של חניך בודד (שמירה אוטומטית / זמן אמת)
   const handleUpdateSingleAttendance = async (date, session, studentId, status, markedBy) => {
-    // הפעלה מיידית ברקע מבלי לחסום את המשתמש
     try {
       await updateSingleAttendanceRecord(date, session, studentId, status, markedBy);
     } catch (error) {
       console.error("שגיאה בעדכון נוכחות אוטומטי:", error);
-      // ניתן להוסיף הודעת שגיאה קטנה או Toast כאן אם רוצים
+      throw error; // RollCall מציג תג שגיאה ספציפי לחניך ומבטל את הסימון האופטימי
     }
   };
 
@@ -241,8 +243,9 @@ function App() {
       } else {
         setActiveTab('dashboard');
       }
-    } catch {
-      alert("שגיאה בעדכון מצב החירום בענן.");
+    } catch (error) {
+      console.error("שגיאה בעדכון מצב חירום:", error);
+      showToast('שגיאה בעדכון מצב החירום בענן. נסה שוב.', 'error');
     } finally {
       setDbOperating(false);
     }
@@ -293,62 +296,7 @@ function App() {
       setUser(null);
       setLoading(false);
       setActiveTab('rollcall');
-    }
-  };
-
-  // רינדור התוכן הדינמי בהתאם ללשונית שנבחרה
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return (
-          <Dashboard 
-            students={students} 
-            history={history} 
-            onNavigateToTab={setActiveTab} 
-            setDormFilter={setDormFilter} 
-          />
-        );
-      case 'rollcall':
-        return (
-          <RollCall 
-            students={students}
-            history={history}
-            onUpdateSingleAttendance={handleUpdateSingleAttendance}
-            initialDormFilter={dormFilter}
-            clearInitialDormFilter={clearInitialDormFilter}
-            user={user}
-          />
-        );
-      case 'emergency':
-        if (user?.role !== 'admin' && !emergencyState.active) {
-          setActiveTab('rollcall');
-          return null;
-        }
-        return (
-          <EmergencyMode 
-            students={students} 
-            history={history}
-            emergencyState={emergencyState} 
-            onSaveEmergencyState={handleSaveEmergencyState} 
-          />
-        );
-      case 'students':
-        return (
-          <StudentManager 
-            students={students} 
-            onSaveStudents={handleSaveStudents} 
-            onResetStudents={handleResetStudents}
-            user={user}
-          />
-        );
-      case 'staff':
-        if (user?.role !== 'admin') {
-          setActiveTab('rollcall');
-          return null;
-        }
-        return <StaffManager />;
-      default:
-        return <RollCall students={students} history={history} onUpdateSingleAttendance={handleUpdateSingleAttendance} initialDormFilter={dormFilter} clearInitialDormFilter={clearInitialDormFilter} user={user} />;
+      setVisitedTabs(new Set(['rollcall']));
     }
   };
 
@@ -402,6 +350,25 @@ function App() {
   // אם המשתמש מחובר (מדריך) אך טרם הוקצתה לו קבוצת עבודה על ידי המנהל
   if (user.role !== 'admin' && !user.group) {
     return <GroupPending user={user} onLogout={handleLogout} />;
+  }
+
+  // אילו טאבים מותר למשתמש הנוכחי בכלל לראות
+  const isTabAllowed = (tab) => {
+    if (tab === 'staff') return user?.role === 'admin';
+    if (tab === 'emergency') return user?.role === 'admin' || emergencyState.active;
+    return true;
+  };
+
+  // טאב שביקרו בו נשאר מורכב (מוסתר ב-CSS כשלא פעיל) כדי לא לאבד מצב מקומי
+  // בכל מעבר - מחושב בזמן רינדור, אותה תבנית שכבר קיימת ב-RollCall (dormSyncKey)
+  const desiredVisited = new Set([...visitedTabs, activeTab].filter(isTabAllowed));
+  const visitedChanged = desiredVisited.size !== visitedTabs.size ||
+    [...desiredVisited].some(t => !visitedTabs.has(t));
+  if (visitedChanged) {
+    setVisitedTabs(desiredVisited);
+  }
+  if (!isTabAllowed(activeTab)) {
+    setActiveTab('rollcall');
   }
 
   return (
@@ -523,7 +490,50 @@ function App() {
       {/* אזור תוכן ראשי */}
       <main className="main-content">
         <Suspense fallback={<TabLoadingFallback />}>
-          {renderTabContent()}
+          <div style={{ display: activeTab === 'rollcall' ? 'block' : 'none' }}>
+            <RollCall
+              students={students}
+              history={history}
+              onUpdateSingleAttendance={handleUpdateSingleAttendance}
+              initialDormFilter={dormFilter}
+              clearInitialDormFilter={clearInitialDormFilter}
+              user={user}
+            />
+          </div>
+          {desiredVisited.has('dashboard') && (
+            <div style={{ display: activeTab === 'dashboard' ? 'block' : 'none' }}>
+              <Dashboard
+                students={students}
+                history={history}
+                onNavigateToTab={setActiveTab}
+                setDormFilter={setDormFilter}
+              />
+            </div>
+          )}
+          {desiredVisited.has('students') && (
+            <div style={{ display: activeTab === 'students' ? 'block' : 'none' }}>
+              <StudentManager
+                students={students}
+                onSaveStudents={handleSaveStudents}
+                onResetStudents={handleResetStudents}
+                user={user}
+              />
+            </div>
+          )}
+          {desiredVisited.has('staff') && (
+            <div style={{ display: activeTab === 'staff' ? 'block' : 'none' }}>
+              <StaffManager />
+            </div>
+          )}
+          {desiredVisited.has('emergency') && (
+            <div style={{ display: activeTab === 'emergency' ? 'block' : 'none' }}>
+              <EmergencyMode
+                students={students}
+                emergencyState={emergencyState}
+                onSaveEmergencyState={handleSaveEmergencyState}
+              />
+            </div>
+          )}
         </Suspense>
       </main>
 
@@ -540,6 +550,14 @@ function App() {
         מערכת נוכחות פנימיית צפית © {new Date().getFullYear()} • פותח לטובת צוותי ההדרכה והפנימיות
       </footer>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
   );
 }
 
