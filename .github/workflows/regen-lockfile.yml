@@ -1,0 +1,58 @@
+name: Regenerate lockfile on Linux (one-off)
+
+# Manual-only maintenance job. package-lock.json was generated on Windows,
+# where npm prunes @napi-rs/wasm-runtime's @emnapi/* subtree as unreachable;
+# the Linux deploy runner needs that subtree, so `npm ci` fails there. This
+# regenerates the lock file on the same OS/arch as the deploy runner, then
+# self-verifies `npm ci` succeeds with it before pushing anything -- only a
+# branch, never main directly.
+#
+# Delete this workflow file once the lockfile is merged and npm ci is
+# restored in deploy.yml; it is not meant to run again after that.
+
+on:
+  workflow_dispatch:
+  # Fires the moment this file itself is pushed, so it runs without needing
+  # a manual dispatch trigger. Delete this workflow file after use.
+  push:
+    paths:
+      - '.github/workflows/regen-lockfile.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Regenerate package-lock.json on Linux
+        run: |
+          rm -f package-lock.json
+          npm install
+
+      - name: Verify npm ci succeeds with the regenerated lock file
+        run: |
+          rm -rf node_modules
+          npm ci
+
+      - name: Verify the app still builds
+        run: npm run build
+
+      - name: Push the regenerated lock file to a branch (not main)
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "package-lock.json did not change -- nothing to push."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b chore/linux-lockfile
+          git add package-lock.json
+          git commit -m "Regenerate package-lock.json on Linux (ubuntu-latest, Node 24)"
+          git push origin chore/linux-lockfile
