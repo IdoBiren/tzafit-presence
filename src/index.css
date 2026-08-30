@@ -410,6 +410,30 @@ a {
   border-color: var(--leave);
 }
 
+/* תג מצב שמירה קטן ליד שם החניך */
+.save-badge {
+  font-size: 0.75rem;
+  margin-right: 0.35rem;
+}
+
+.save-badge.saving {
+  color: var(--text-muted);
+}
+
+.save-badge.error {
+  color: var(--absent);
+}
+
+/* שורת ההתקדמות נשארת דביקה מתחת לכותרת בזמן גלילת רשימת החניכים */
+.rollcall-progress-sticky {
+  position: sticky;
+  top: 72px; /* הערכה מול גובה הכותרת - אומת חזותית בזמן הבדיקה */
+  z-index: 50;
+  background-color: var(--bg-app);
+  padding: 0.75rem 0;
+  margin-bottom: 0.5rem;
+}
+
 /* לוח סטטיסטיקות */
 .stats-grid {
   display: grid;
@@ -902,6 +926,64 @@ a {
   margin-bottom: 1.5rem;
 }
 
+/* התראות toast - מחליפות alert() חוסם עבור משוב שמירה */
+.toast-container {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000; /* מעל modal-overlay ו-navbar-wrapper (שניהם 1000) */
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 380px;
+  padding: 0 1rem;
+  pointer-events: none;
+}
+
+.toast-item {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: white;
+  animation: slide-up 0.25s ease-out;
+}
+
+.toast-success { background-color: #16a34a; }
+.toast-error { background-color: #dc2626; }
+.toast-info { background-color: #0f172a; }
+
+.toast-item span {
+  flex: 1;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.8;
+  cursor: pointer;
+  display: flex;
+  padding: 0.15rem;
+}
+
+.toast-close:hover {
+  opacity: 1;
+}
+
+@media (max-width: 640px) {
+  .toast-container {
+    bottom: 76px; /* מפנה מקום לסרגל הניווט הקבוע (56px + מרווח) */
+  }
+}
+
 .form-group {
   display: flex;
   flex-direction: column;
@@ -1025,17 +1107,17 @@ a {
     border-top: none;
     padding-top: 0;
     display: flex;
-    gap: 0.25rem;
+    gap: 0.5rem;
     width: auto;
     flex-shrink: 0;
   }
 
   .action-btn {
-    padding: 0.3rem 0.45rem;
+    padding: 0.35rem 0.5rem;
     font-size: 0.75rem;
     gap: 0.15rem;
     border-radius: 6px;
-    height: 30px;
+    height: 40px;
   }
 
   /* בטלפונים צרים במיוחד (מתחת ל-380px), נעלים את הטקסט בכפתורים ונשאיר רק אייקונים להצגה נקייה */
@@ -1046,8 +1128,8 @@ a {
     .action-btn {
       padding: 0.35rem;
       border-radius: 50%;
-      width: 28px;
-      height: 28px;
+      width: 40px;
+      height: 40px;
     }
   }
 
