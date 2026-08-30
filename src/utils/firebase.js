@@ -14,13 +14,12 @@ const firebaseConfig = {
 // בודק האם המשתמש הגדיר את מפתחות הפרויקט ב-Firebase בקובץ .env.local
 let isFirebaseConfigured = !!import.meta.env.VITE_FIREBASE_PROJECT_ID;
 
-let app = null;
 let db = null;
 let auth = null;
 
 if (isFirebaseConfigured) {
   try {
-    app = initializeApp(firebaseConfig);
+    const app = initializeApp(firebaseConfig);
     db = getFirestore(app);
     auth = getAuth(app);
   } catch (error) {

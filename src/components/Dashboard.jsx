@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   Users, 
   UserCheck, 
@@ -15,7 +15,7 @@ import {
   Award,
   X
 } from 'lucide-react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
 const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
   const [modalData, setModalData] = useState(null); // { groupName, statusName, color }
@@ -170,7 +170,6 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
     if (!history || history.length === 0) return [];
 
     const studentStats = students.map(student => {
-      let sessionsCount = 0;
       let presentCount = 0;
       let absentCount = 0;
       let leaveCount = 0;
@@ -178,7 +177,6 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
       history.forEach(session => {
         const status = session.records[student.id];
         if (status) {
-          sessionsCount++;
           if (status === 'present') presentCount++;
           else if (status === 'absent') absentCount++;
           else if (status === 'leave') leaveCount++;

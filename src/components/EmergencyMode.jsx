@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { AlertOctagon, ShieldCheck, ShieldAlert, Undo, Flame, BellRing } from 'lucide-react';
 
 const EmergencyMode = ({ students, history, emergencyState, onSaveEmergencyState }) => {

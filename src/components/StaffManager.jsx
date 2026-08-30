@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Shield, ShieldAlert, User, Save, Trash2, CheckCircle, Clock } from 'lucide-react';
 import { subscribeToUsers, updateUserProfile, deleteUserRecord } from '../utils/storage';
 

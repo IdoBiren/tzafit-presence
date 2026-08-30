@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { UserPlus, Edit2, Trash2, X, Save, AlertTriangle, UserCheck, RotateCcw } from 'lucide-react';
+import { useState } from 'react';
+import { UserPlus, Edit2, Trash2, X, Save, UserCheck, RotateCcw } from 'lucide-react';
 
 const StudentManager = ({ students, onSaveStudents, onResetStudents, user }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -61,7 +61,7 @@ const StudentManager = ({ students, onSaveStudents, onResetStudents, user }) => 
       return;
     }
 
-    let updatedList = [];
+    let updatedList;
 
     if (editingStudent) {
       // עריכה

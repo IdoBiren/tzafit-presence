@@ -1,4 +1,3 @@
-import React from 'react';
 import { ShieldAlert, LogOut, Loader2 } from 'lucide-react';
 
 function GroupPending({ user, onLogout }) {

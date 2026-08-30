@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { UserCheck, ArrowRight, User } from 'lucide-react';
 
 function NameSetup({ user, onSave }) {
