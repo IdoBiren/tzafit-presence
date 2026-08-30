@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Check, X, PlaneTakeoff, Search, User, Filter } from 'lucide-react';
+import { useToast } from './ToastProvider';
 
 const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilter, clearInitialDormFilter, user }) => {
+  const { showToast } = useToast();
   const [selectedDorm, setSelectedDorm] = useState(() => {
     if (initialDormFilter) {
       return initialDormFilter;
@@ -19,6 +21,7 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilt
   // ולכן אין צורך במצב מקומי או ב-effect בשביל זה, רק בערך נגזר.
   const markedBy = user?.displayName || 'מדריך תורן';
   const [tempRecords, setTempRecords] = useState({});
+  const [studentSaveStatus, setStudentSaveStatus] = useState({}); // id -> 'saving' | 'error'
 
   // סנכרון פילטר בית מהדאשבורד, או בחירת קבוצת המדריך כברירת מחדל.
   // מתעדכן בזמן רינדור (ולא ב-effect) כשאחד הערכים משתנה, כדי ש-selectedDorm
@@ -62,22 +65,29 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilt
     setTempRecords(initialRecords);
   }, [date, session, history, students]);
 
-  const handleStatusChange = (studentId, status) => {
-    setTempRecords(prev => {
-      const currentStatus = prev[studentId];
-      // אם לוחצים שוב על אותו כפתור מסומן - מורידים את הסימון (מחזירים ל-null)
-      const newStatus = currentStatus === status ? null : status;
-      
-      // עדכון אוטומטי מיידי בענן
-      if (onUpdateSingleAttendance) {
-        onUpdateSingleAttendance(date, session, studentId, newStatus, markedBy);
-      }
-      
-      return {
-        ...prev,
-        [studentId]: newStatus
-      };
-    });
+  const handleStatusChange = async (studentId, status) => {
+    // אם לוחצים שוב על אותו כפתור מסומן - מורידים את הסימון (מחזירים ל-null)
+    const currentStatus = tempRecords[studentId];
+    const newStatus = currentStatus === status ? null : status;
+
+    setTempRecords(prev => ({ ...prev, [studentId]: newStatus })); // סימון אופטימי, updater טהור
+    setStudentSaveStatus(prev => ({ ...prev, [studentId]: 'saving' }));
+
+    if (!onUpdateSingleAttendance) return;
+
+    try {
+      await onUpdateSingleAttendance(date, session, studentId, newStatus, markedBy);
+      setStudentSaveStatus(prev => {
+        const next = { ...prev };
+        delete next[studentId];
+        return next;
+      });
+    } catch {
+      setStudentSaveStatus(prev => ({ ...prev, [studentId]: 'error' }));
+      setTempRecords(prev => ({ ...prev, [studentId]: currentStatus })); // ביטול הסימון האופטימי
+      const student = students.find(s => s.id === studentId);
+      showToast(`שמירת הנוכחות של ${student?.name || 'חניך'} נכשלה. נסה שוב.`, 'error');
+    }
   };
 
 
@@ -144,39 +154,40 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilt
             {/* בחירת סשן */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
               <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>סוג רישום</label>
-              <div className="btn-group" style={{ display: 'flex', flexWrap: 'wrap', gap: '2px' }}>
-                <button 
-                  type="button" 
+              <div className="btn-group" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                <button
+                  type="button"
                   className={`toggle-btn ${session === 'morning' ? 'active' : ''}`}
                   onClick={() => setSession('morning')}
-                  style={{ flex: 1, minWidth: '70px', padding: '0.5rem 0.5rem', fontSize: '0.82rem' }}
+                  style={{ flex: 1, minWidth: '70px', minHeight: '44px', padding: '0.65rem 0.6rem', fontSize: '0.82rem' }}
                 >
                   פתיחת יום
                 </button>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className={`toggle-btn ${session === 'afternoon' ? 'active' : ''}`}
                   onClick={() => setSession('afternoon')}
-                  style={{ flex: 1, minWidth: '70px', padding: '0.5rem 0.5rem', fontSize: '0.82rem' }}
+                  style={{ flex: 1, minWidth: '70px', minHeight: '44px', padding: '0.65rem 0.6rem', fontSize: '0.82rem' }}
                 >
                   ארוחת ערב
                 </button>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className={`toggle-btn ${session === 'evening' ? 'active' : ''}`}
                   onClick={() => setSession('evening')}
-                  style={{ flex: 1, minWidth: '70px', padding: '0.5rem 0.5rem', fontSize: '0.82rem' }}
+                  style={{ flex: 1, minWidth: '70px', minHeight: '44px', padding: '0.65rem 0.6rem', fontSize: '0.82rem' }}
                 >
                   כיבוי אורות
                 </button>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className={`toggle-btn ${session === 'night' ? 'active' : ''}`}
                   onClick={() => setSession('night')}
-                  style={{ 
-                    flex: 1, 
-                    minWidth: '70px', 
-                    padding: '0.5rem 0.5rem', 
+                  style={{
+                    flex: 1,
+                    minWidth: '70px',
+                    minHeight: '44px',
+                    padding: '0.65rem 0.6rem',
                     fontSize: '0.82rem',
                     backgroundColor: session === 'night' ? 'var(--accent)' : 'rgba(37, 99, 235, 0.05)',
                     color: session === 'night' ? 'white' : 'var(--accent)',
@@ -249,27 +260,39 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilt
 
         {/* תיבת חיפוש */}
         <div style={{ position: 'relative', width: '100%', maxWidth: '280px' }}>
-          <input 
-            type="text" 
-            className="text-input" 
-            placeholder="חפש לפי שם או חדר..." 
+          <input
+            type="text"
+            className="text-input"
+            placeholder="חפש לפי שם או חדר..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: '100%', paddingRight: '2.25rem' }}
+            style={{ width: '100%', paddingRight: '2.25rem', paddingLeft: searchQuery ? '2rem' : undefined }}
           />
           <Search size={16} style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              aria-label="נקה חיפוש"
+              style={{ position: 'absolute', left: '0.5rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '0.25rem' }}
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
       </div>
 
       {/* מוני התקדמות של הסינון הנוכחי */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.25rem', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
-        <span>התקדמות סבב: <strong style={{ color: markedCount === totalCount ? 'var(--present)' : 'var(--accent)' }}>{markedCount} מתוך {totalCount} סומנו</strong></span>
-        <span>|</span>
-        <span style={{ color: 'var(--present)' }}>נוכח: <strong>{presentCount}</strong></span>
-        <span>|</span>
-        <span style={{ color: 'var(--absent)' }}>לא נוכח: <strong>{absentCount}</strong></span>
-        <span>|</span>
-        <span style={{ color: 'var(--leave)' }}>בבית: <strong>{leaveCount}</strong></span>
+      <div className="rollcall-progress-sticky">
+        <div style={{ display: 'flex', gap: '1rem', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
+          <span>התקדמות סבב: <strong style={{ color: markedCount === totalCount ? 'var(--present)' : 'var(--accent)' }}>{markedCount} מתוך {totalCount} סומנו</strong></span>
+          <span>|</span>
+          <span style={{ color: 'var(--present)' }}>נוכח: <strong>{presentCount}</strong></span>
+          <span>|</span>
+          <span style={{ color: 'var(--absent)' }}>לא נוכח: <strong>{absentCount}</strong></span>
+          <span>|</span>
+          <span style={{ color: 'var(--leave)' }}>בבית: <strong>{leaveCount}</strong></span>
+        </div>
       </div>
 
       {/* גריד כרטיסי החניכים */}
@@ -285,7 +308,15 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilt
                       {student.name.split(' ').map(n => n[0]).join('')}
                     </div>
                     <div className="student-details">
-                      <div className="student-name">{student.name}</div>
+                      <div className="student-name">
+                        {student.name}
+                        {studentSaveStatus[student.id] === 'saving' && (
+                          <span className="save-badge saving" title="שומר...">⋯</span>
+                        )}
+                        {studentSaveStatus[student.id] === 'error' && (
+                          <span className="save-badge error" title="השמירה נכשלה - לחץ שוב">⚠</span>
+                        )}
+                      </div>
                       <div className="student-meta-tags">
                         <span className="tag-dorm" style={{ color: getDormLabelColor(student.dorm), backgroundColor: `${getDormLabelColor(student.dorm)}12` }}>
                           {student.dorm}
