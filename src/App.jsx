@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { 
   LayoutDashboard, 
   ClipboardList, 
@@ -9,14 +9,19 @@ import {
   UserCheck
 } from 'lucide-react';
 import Header from './components/Header';
-import Dashboard from './components/Dashboard';
 import RollCall from './components/RollCall';
-import EmergencyMode from './components/EmergencyMode';
-import StudentManager from './components/StudentManager';
 import Login from './components/Login';
 import NameSetup from './components/NameSetup';
 import GroupPending from './components/GroupPending';
-import StaffManager from './components/StaffManager';
+
+// נטענים על פי דרישה בלבד - כל אחד מהם הוא טאב משני, לא מסך הנחיתה
+// (rollcall) שרוב המדריכים פותחים ראשון. Dashboard סוחב את recharts, תלות
+// כבדה יחסית שבשימוש רק שם, כך שהפיצול הזה הוא שמוריד הכי הרבה ממשקל
+// הטעינה הראשונית.
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const EmergencyMode = lazy(() => import('./components/EmergencyMode'));
+const StudentManager = lazy(() => import('./components/StudentManager'));
+const StaffManager = lazy(() => import('./components/StaffManager'));
 import { 
   subscribeToStudents, 
   saveStudents, 
@@ -31,6 +36,21 @@ import {
 } from './utils/storage';
 import { auth, isFirebaseConfigured } from './utils/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
+
+// מוצג לרגע קצר בלבד בזמן שטאב הנטען לפי דרישה מגיע - לא מסך טעינה מלא,
+// כי מעטפת האפליקציה (כותרת, ניווט) כבר מוצגת
+const TabLoadingFallback = () => (
+  <div style={{
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: '4rem 1rem',
+    color: 'var(--text-muted)',
+    fontWeight: 700
+  }}>
+    טוען...
+  </div>
+);
 
 function App() {
   const [user, setUser] = useState(null);
@@ -502,7 +522,9 @@ function App() {
 
       {/* אזור תוכן ראשי */}
       <main className="main-content">
-        {renderTabContent()}
+        <Suspense fallback={<TabLoadingFallback />}>
+          {renderTabContent()}
+        </Suspense>
       </main>
 
       {/* כותרת תחתונה עדינה */}
