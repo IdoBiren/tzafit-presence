@@ -1,25 +1,20 @@
 import { useState } from 'react';
-import { AlertOctagon, ShieldCheck, ShieldAlert, Undo, Flame, BellRing } from 'lucide-react';
+import { AlertOctagon, ShieldCheck, ShieldAlert, Undo, Flame, BellRing, Search, X } from 'lucide-react';
+import ConfirmModal from './ConfirmModal';
 
-const EmergencyMode = ({ students, history, emergencyState, onSaveEmergencyState }) => {
+const EmergencyMode = ({ students, emergencyState, onSaveEmergencyState }) => {
   const [reasonInput, setReasonInput] = useState('');
+  const [pendingStart, setPendingStart] = useState(false);
+  const [pendingEnd, setPendingEnd] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // הפעלת מצב חירום (במידה ולא פעיל עדיין)
-  const handleStartEmergency = (e) => {
-    e.preventDefault();
-    const latestRecord = history && history.length > 0 ? history[0] : null;
+  // הפעלת מצב חירום - כל חניך רשום נכנס לרשימה כ"טרם אומת", בלי קשר לסבב
+  // הנוכחות האחרון. חניך שסומן "בבית"/"חסר" בטעות או חזר לקמפוס, וגם חניך
+  // שלא סומן כלל, חייבים להיות במעקב במפקד חירום אמיתי.
+  const handleStartEmergency = () => {
     const initialRecords = {};
-    
     students.forEach(s => {
-      if (latestRecord) {
-        // רשום רק את מי שהיה נוכח בסבב האחרון
-        if (latestRecord.records[s.id] === 'present') {
-          initialRecords[s.id] = false; // טרם אומת
-        }
-      } else {
-        // ברירת מחדל אם אין היסטוריה
-        initialRecords[s.id] = false;
-      }
+      initialRecords[s.id] = false; // טרם אומת
     });
 
     onSaveEmergencyState({
@@ -28,6 +23,16 @@ const EmergencyMode = ({ students, history, emergencyState, onSaveEmergencyState
       reason: reasonInput || 'בדיקת נוכחות חירום כללית',
       records: initialRecords
     });
+  };
+
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    setPendingStart(true);
+  };
+
+  const confirmStart = () => {
+    setPendingStart(false);
+    handleStartEmergency();
   };
 
   // סימון חניך כבטוח
@@ -50,14 +55,17 @@ const EmergencyMode = ({ students, history, emergencyState, onSaveEmergencyState
 
   // ביטול מוחלט של החירום
   const handleEndEmergency = () => {
-    if (window.confirm('האם אתה בטוח שברצונך לסיים את אירוע החירום ולחזור לשגרה?')) {
-      onSaveEmergencyState({
-        active: false,
-        triggeredAt: null,
-        reason: '',
-        records: {}
-      });
-    }
+    setPendingEnd(true);
+  };
+
+  const confirmEnd = () => {
+    setPendingEnd(false);
+    onSaveEmergencyState({
+      active: false,
+      triggeredAt: null,
+      reason: '',
+      records: {}
+    });
   };
 
   // אם החירום אינו פעיל, מציגים פנל להפעלה שלו
@@ -88,12 +96,12 @@ const EmergencyMode = ({ students, history, emergencyState, onSaveEmergencyState
           </p>
         </div>
 
-        <form onSubmit={handleStartEmergency}>
+        <form onSubmit={handleFormSubmit}>
           <div className="form-group">
             <label htmlFor="reason">סיבת הפעלת החירום</label>
-            <input 
+            <input
               id="reason"
-              type="text" 
+              type="text"
               className="text-input"
               placeholder="לדוגמה: תרגיל פנימייתי, אזעקה, הפסקת חשמל ממושכת..."
               value={reasonInput}
@@ -102,23 +110,35 @@ const EmergencyMode = ({ students, history, emergencyState, onSaveEmergencyState
             />
           </div>
 
-          <button 
-            type="submit" 
-            className="btn-primary" 
+          <button
+            type="submit"
+            className="btn-primary"
             style={{ width: '100%', backgroundColor: 'var(--absent)', display: 'flex', justifyContent: 'center', gap: '0.5rem', padding: '0.9rem', fontSize: '1.05rem' }}
           >
             <Flame size={20} />
             <span>שדרג למצב חירום עכשיו!</span>
           </button>
         </form>
+
+        <ConfirmModal
+          open={pendingStart}
+          title="הפעלת מצב חירום מוסדי"
+          message={`מסך הבית של כלל המדריכים יוחלף מיידית ברשימת בדיקה. סיבה: "${reasonInput || 'בדיקת נוכחות חירום כללית'}". להמשיך?`}
+          confirmLabel="הפעל חירום עכשיו"
+          danger
+          onConfirm={confirmStart}
+          onCancel={() => setPendingStart(false)}
+        />
       </div>
     );
   }
 
-  // סינון חניכים לפי בטוחים / טרם אומתו (לפי אלו שנכללים ביומן החירום)
-  const unaccountedStudents = students.filter(s => emergencyState.records[s.id] === false);
-  const safeStudents = students.filter(s => emergencyState.records[s.id] === true);
+  // סינון חניכים לפי בטוחים / טרם אומתו (לפי אלו שנכללים ביומן החירום), ולפי חיפוש
+  const matchesSearch = (s) => s.name.includes(searchQuery) || s.room.includes(searchQuery);
+  const unaccountedStudents = students.filter(s => emergencyState.records[s.id] === false && matchesSearch(s));
+  const safeStudents = students.filter(s => emergencyState.records[s.id] === true && matchesSearch(s));
 
+  // חשוב: הספירה הכוללת והאחוז נשארים על כל הרשימה, לא רק על התוצאות המסוננות
   const totalStudentsCount = Object.keys(emergencyState.records).length;
   const safeStudentsCount = safeStudents.length;
   const safePercentage = totalStudentsCount > 0 ? Math.round((safeStudentsCount / totalStudentsCount) * 100) : 0;
@@ -133,38 +153,20 @@ const EmergencyMode = ({ students, history, emergencyState, onSaveEmergencyState
         </h2>
         <p>סיבת האירוע: <strong>{emergencyState.reason}</strong></p>
         
-        {/* באנר הסבר על סינון נוכחות אחרונה */}
-        {(() => {
-          const latestRecord = history && history.length > 0 ? history[0] : null;
-          let sessionName = '';
-          if (latestRecord) {
-            if (latestRecord.session === 'morning') sessionName = 'רישום פתיחת יום';
-            else if (latestRecord.session === 'afternoon') sessionName = 'רישום ארוחת ערב';
-            else if (latestRecord.session === 'evening') sessionName = 'רישום כיבוי אורות';
-            else if (latestRecord.session === 'night') sessionName = 'רישום לילה';
-          }
-          const recordDate = latestRecord ? latestRecord.date.split('-').reverse().join('/') : '';
-          
-          return (
-            <div style={{ 
-              fontSize: '0.85rem', 
-              opacity: 0.95, 
-              marginTop: '0.5rem', 
-              backgroundColor: 'rgba(255,255,255,0.15)', 
-              padding: '0.4rem 1rem', 
-              borderRadius: '6px',
-              fontWeight: 500,
-              display: 'inline-block',
-              border: '1px solid rgba(255,255,255,0.2)'
-            }}>
-              {latestRecord ? (
-                <span>בדיקת החירום מתבצעת עבור <strong>{totalStudentsCount} חניכים</strong> שהיו נוכחים ב<strong>{sessionName}</strong> מתאריך {recordDate}.</span>
-              ) : (
-                <span>בדיקת החירום מתבצעת עבור כלל חניכי הפנימייה (לא נמצא סבב נוכחות קודם).</span>
-              )}
-            </div>
-          );
-        })()}
+        {/* באנר הסבר - היקף בדיקת החירום */}
+        <div style={{
+          fontSize: '0.85rem',
+          opacity: 0.95,
+          marginTop: '0.5rem',
+          backgroundColor: 'rgba(255,255,255,0.15)',
+          padding: '0.4rem 1rem',
+          borderRadius: '6px',
+          fontWeight: 500,
+          display: 'inline-block',
+          border: '1px solid rgba(255,255,255,0.2)'
+        }}>
+          <span>בדיקת החירום מתבצעת עבור <strong>כלל {totalStudentsCount} חניכי הפנימייה</strong> הרשומים כעת במערכת.</span>
+        </div>
 
         <span style={{ fontSize: '0.8rem', opacity: 0.8, display: 'block', marginTop: '0.5rem' }}>
           הופעל בתאריך: {new Date(emergencyState.triggeredAt).toLocaleString('he-IL')}
@@ -205,6 +207,29 @@ const EmergencyMode = ({ students, history, emergencyState, onSaveEmergencyState
             <ShieldCheck size={20} />
             <span>כל החניכים אומתו ונמצאו בטוחים! שגיאה / סיום האירוע אפשרי כעת.</span>
           </div>
+        )}
+      </div>
+
+      {/* חיפוש חניך ספציפי - חשוב במיוחד כשהרשימה ארוכה */}
+      <div style={{ position: 'relative', width: '100%', maxWidth: '320px', margin: '1rem 0' }}>
+        <input
+          type="text"
+          className="text-input"
+          placeholder="חפש לפי שם או חדר..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{ width: '100%', paddingRight: '2.25rem', paddingLeft: searchQuery ? '2rem' : undefined }}
+        />
+        <Search size={16} style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={() => setSearchQuery('')}
+            aria-label="נקה חיפוש"
+            style={{ position: 'absolute', left: '0.5rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '0.25rem' }}
+          >
+            <X size={14} />
+          </button>
         )}
       </div>
 
@@ -299,6 +324,16 @@ const EmergencyMode = ({ students, history, emergencyState, onSaveEmergencyState
           סיום אירוע חירום והחזרת המערכת לשגרה
         </button>
       </div>
+
+      <ConfirmModal
+        open={pendingEnd}
+        title="סיום אירוע חירום"
+        message="האם אתה בטוח שברצונך לסיים את אירוע החירום ולחזור לשגרה?"
+        confirmLabel="סיים אירוע"
+        danger
+        onConfirm={confirmEnd}
+        onCancel={() => setPendingEnd(false)}
+      />
     </div>
   );
 };
