@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   ClipboardList, 
@@ -140,7 +140,11 @@ function App() {
 
         startSubscriptions();
       } else {
-        setUser(null);
+        // user כבר null כברירת מחדל, ו-handleLogin/handleLogout מעדכנים אותו
+        // ישירות - הענף הזה רץ רק כשאין משתמש דמו שמור. loading בכל זאת חייב
+        // לרדת ל-false פה כדי לסיים את מסך הטעינה הראשוני ולהציג את הכניסה,
+        // וזו קריאה אמיתית התלויה בבדיקת sessionStorage (מקור חיצוני).
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setLoading(false);
       }
 
@@ -176,7 +180,7 @@ function App() {
         const newEmergencyState = { ...emergencyState, records: updatedEmergencyRecords };
         await saveEmergencyState(newEmergencyState);
       }
-    } catch (error) {
+    } catch {
       alert("שגיאה בסנכרון השינויים. אנא בדוק את החיבור לרשת ונסה שוב.");
     } finally {
       setDbOperating(false);
@@ -188,7 +192,7 @@ function App() {
     setDbOperating(true);
     try {
       await resetStudentsToDefault();
-    } catch (error) {
+    } catch {
       alert("שגיאה באתחול החניכים בענן.");
     } finally {
       setDbOperating(false);
@@ -205,7 +209,7 @@ function App() {
       } else {
         alert('רישום הנוכחות נשמר בהצלחה במכשיר (LocalStorage)!');
       }
-    } catch (error) {
+    } catch {
       alert("שגיאה בשמירת סבב הנוכחות. בדוק את החיבור לרשת ונסה שוב.");
     } finally {
       setDbOperating(false);
@@ -235,7 +239,7 @@ function App() {
       } else {
         setActiveTab('dashboard');
       }
-    } catch (error) {
+    } catch {
       alert("שגיאה בעדכון מצב החירום בענן.");
     } finally {
       setDbOperating(false);

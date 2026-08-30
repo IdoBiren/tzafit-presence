@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Check, X, PlaneTakeoff, Save, Search, User, Filter, AlertTriangle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Check, X, PlaneTakeoff, Search, User, Filter } from 'lucide-react';
 
-const RollCall = ({ students, history, onSaveAttendance, onUpdateSingleAttendance, initialDormFilter, clearInitialDormFilter, user }) => {
+const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilter, clearInitialDormFilter, user }) => {
   const [selectedDorm, setSelectedDorm] = useState(() => {
     if (initialDormFilter) {
       return initialDormFilter;
@@ -15,31 +15,40 @@ const RollCall = ({ students, history, onSaveAttendance, onUpdateSingleAttendanc
   const [sortBy, setSortBy] = useState('unmarked');
   const [session, setSession] = useState('evening'); // ברירת מחדל רישום ערב
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [markedBy, setMarkedBy] = useState(user ? user.displayName : 'מדריך תורן');
+  // שם המדריך נגזר ישירות מהמשתמש המחובר - אין קלט ידני לעריכתו (הוסר בעבר),
+  // ולכן אין צורך במצב מקומי או ב-effect בשביל זה, רק בערך נגזר.
+  const markedBy = user?.displayName || 'מדריך תורן';
   const [tempRecords, setTempRecords] = useState({});
 
-  // עדכון שם המדריך בהתאם למשתמש המחובר
-  useEffect(() => {
-    if (user && user.displayName) {
-      setMarkedBy(user.displayName);
-    }
-  }, [user]);
-
-
-  // סנכרון פילטר בית מהדאשבורד במידה והשתמשו בו, או בחירת קבוצת המדריך כברירת מחדל
-  useEffect(() => {
+  // סנכרון פילטר בית מהדאשבורד, או בחירת קבוצת המדריך כברירת מחדל.
+  // מתעדכן בזמן רינדור (ולא ב-effect) כשאחד הערכים משתנה, כדי ש-selectedDorm
+  // יתעדכן באותו רינדור בלי הבזק של הערך הקודם - ראו:
+  // https://react.dev/reference/react/useState#storing-information-from-previous-renders
+  const dormSyncKey = `${initialDormFilter || ''}|${user?.group || ''}`;
+  const [appliedDormSyncKey, setAppliedDormSyncKey] = useState(dormSyncKey);
+  if (dormSyncKey !== appliedDormSyncKey) {
+    setAppliedDormSyncKey(dormSyncKey);
     if (initialDormFilter) {
       setSelectedDorm(initialDormFilter);
-      clearInitialDormFilter();
     } else if (user && user.group && user.group !== 'כללי') {
       setSelectedDorm(user.group);
     }
-  }, [initialDormFilter, user?.group, clearInitialDormFilter]);
+  }
 
-  // טעינת רשומת נוכחות קיימת לתאריך ולסשן הנבחרים, או אתחול ברירת מחדל
+  // הודעה לדאשבורד שהפילטר שביקש נצרך - קריאה להורה, לא state מקומי, ולכן
+  // חייבת להישאר ב-effect אמיתי.
+  useEffect(() => {
+    if (initialDormFilter) {
+      clearInitialDormFilter();
+    }
+  }, [initialDormFilter, clearInitialDormFilter]);
+
+  // טעינת רשומת נוכחות קיימת לתאריך ולסשן הנבחרים, או אתחול ברירת מחדל.
+  // זו טעינת נתונים חיצוניים (רשומה שמורה) לתוך עותק מקומי הניתן לעריכה -
+  // סנכרון עם מקור חיצוני, לא state נגזר טהור, ולכן ה-effect עצמו נכון כאן.
   useEffect(() => {
     const existingRecord = history.find(h => h.date === date && h.session === session);
-    
+
     const initialRecords = {};
     students.forEach(student => {
       if (existingRecord && existingRecord.records[student.id]) {
@@ -49,6 +58,7 @@ const RollCall = ({ students, history, onSaveAttendance, onUpdateSingleAttendanc
         initialRecords[student.id] = null;
       }
     });
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTempRecords(initialRecords);
   }, [date, session, history, students]);
 
