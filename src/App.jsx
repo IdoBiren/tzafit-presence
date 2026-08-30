@@ -20,8 +20,7 @@ import StaffManager from './components/StaffManager';
 import { 
   subscribeToStudents, 
   saveStudents, 
-  subscribeToHistory, 
-  saveAttendanceRecord, 
+  subscribeToHistory,
   updateSingleAttendanceRecord,
   subscribeToEmergency, 
   saveEmergencyState,
@@ -199,23 +198,6 @@ function App() {
     }
   };
 
-  // שמירת סבב נוכחות מלא בענן (עדיין רלוונטי לגיבוי או סיום)
-  const handleSaveAttendance = async (date, session, records, markedBy) => {
-    setDbOperating(true);
-    try {
-      await saveAttendanceRecord(date, session, records, markedBy);
-      if (isFirebaseConfigured) {
-        alert('רישום הנוכחות נשמר וסונכרן בהצלחה בענן!');
-      } else {
-        alert('רישום הנוכחות נשמר בהצלחה במכשיר (LocalStorage)!');
-      }
-    } catch {
-      alert("שגיאה בשמירת סבב הנוכחות. בדוק את החיבור לרשת ונסה שוב.");
-    } finally {
-      setDbOperating(false);
-    }
-  };
-
   // עדכון נוכחות של חניך בודד (שמירה אוטומטית / זמן אמת)
   const handleUpdateSingleAttendance = async (date, session, studentId, status, markedBy) => {
     // הפעלה מיידית ברקע מבלי לחסום את המשתמש
@@ -309,9 +291,8 @@ function App() {
       case 'rollcall':
         return (
           <RollCall 
-            students={students} 
-            history={history} 
-            onSaveAttendance={handleSaveAttendance} 
+            students={students}
+            history={history}
             onUpdateSingleAttendance={handleUpdateSingleAttendance}
             initialDormFilter={dormFilter}
             clearInitialDormFilter={clearInitialDormFilter}
@@ -347,7 +328,7 @@ function App() {
         }
         return <StaffManager />;
       default:
-        return <RollCall students={students} history={history} onSaveAttendance={handleSaveAttendance} onUpdateSingleAttendance={handleUpdateSingleAttendance} initialDormFilter={dormFilter} clearInitialDormFilter={clearInitialDormFilter} user={user} />;
+        return <RollCall students={students} history={history} onUpdateSingleAttendance={handleUpdateSingleAttendance} initialDormFilter={dormFilter} clearInitialDormFilter={clearInitialDormFilter} user={user} />;
     }
   };
 

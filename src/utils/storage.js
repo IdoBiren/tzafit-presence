@@ -410,40 +410,7 @@ export const saveStudents = async (updatedList) => {
   }
 };
 
-// 5. שמירת סבב נוכחות חדש
-export const saveAttendanceRecord = async (date, session, records, markedBy) => {
-  const record = {
-    date,
-    session,
-    records,
-    markedBy,
-    timestamp: new Date().toISOString()
-  };
-
-  if (isFirebaseConfigured) {
-    try {
-      const docId = `${date}_${session}`;
-      await setDoc(doc(db, "history", docId), record);
-    } catch (error) {
-      console.error("שגיאה בשמירת סבב נוכחות לענן:", error);
-      throw error;
-    }
-  } else {
-    // Fallback ל-LocalStorage
-    const history = JSON.parse(localStorage.getItem("tzafit_history_v7")) || [];
-    const existingIndex = history.findIndex(h => h.date === date && h.session === session);
-    
-    if (existingIndex > -1) {
-      history[existingIndex] = record;
-    } else {
-      history.unshift(record);
-    }
-    
-    localStorage.setItem("tzafit_history_v7", JSON.stringify(history));
-  }
-};
-
-// 5.5. עדכון נוכחות לחניך בודד בסבב ספציפי (לשמירה אוטומטית)
+// 5. עדכון נוכחות לחניך בודד בסבב ספציפי (לשמירה אוטומטית)
 export const updateSingleAttendanceRecord = async (date, session, studentId, status, markedBy) => {
   const docId = `${date}_${session}`;
   
