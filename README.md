@@ -10,10 +10,11 @@ Built with React 19 + Vite, backed by Firebase (Firestore + Google Auth), with a
 
 - **Roll call** — four daily rounds (`פתיחת יום`, `ארוחת ערב`, `כיבוי אורות`, `לילה`), three statuses per student (`נוכח` / `חסר` / `בבית`). Tap-to-clear on the active status. Sorting defaults to unmarked-first so nobody gets skipped.
 - **Real-time auto-save** — each tap writes only that one student's field (`setDoc` with `merge: true`), so several counselors can mark the same round at once without overwriting each other.
-- **Emergency mode** — an admin activates it with a reason; the checklist is seeded *only* with students who were present in the most recent round, so the team isn't hunting for kids already at home. All screens update live as students are confirmed safe, with a two-column verified/unverified split and a progress bar.
+- **Emergency mode** — an admin activates it with a reason; every registered student starts as unverified, regardless of the last round — a student wrongly marked at home, or never marked, still has to be accounted for. All screens update live as students are confirmed safe, with a two-column verified/unverified split and a progress bar.
 - **Dashboard & reports** — live counters, a clickable pie chart per dorm group (click a slice to list those students by name), a 7-round attendance trend, a chronic-absence table (`<92%`) with tap-to-call parent links, and CSV export with a UTF-8 BOM so Hebrew opens correctly in Excel.
 - **Staff & permissions** — Google sign-in, one-time display-name setup, and an admin screen for assigning each new counselor a role and a dorm group. New counselors wait on a pending screen until an admin assigns them.
 - **Student management** — add, edit, delete students (name, dorm, room, parent name/phone, notes), or reset the roster to the built-in default list.
+- **Group renaming** — admins can rename any of the four dorm groups; students and staff assigned to it are updated in one atomic batch.
 
 ---
 
@@ -28,7 +29,7 @@ Built with React 19 + Vite, backed by Firebase (Firestore + Google Auth), with a
 | Icons | lucide-react |
 | Styling | `index.css` (CSS custom properties + classes), plus inline style objects per component |
 
-No TypeScript, no test suite, no state-management library — all state lives in `App.jsx` and flows down as props.
+No TypeScript, no state-management library — all state lives in `App.jsx` and flows down as props. The only automated tests are the Firestore rules tests (`npm run test:rules`).
 
 ---
 
@@ -59,6 +60,7 @@ npm run dev
 | `npm run build` | Production build to `dist/` |
 | `npm run preview` | Serve the production build locally |
 | `npm run lint` | ESLint |
+| `npm run test:rules` | Run `firestore.rules.test.mjs` against the Firestore emulator (needs Java + firebase-tools) |
 
 ### Running without Firebase
 
@@ -68,7 +70,14 @@ npm run dev
 
 1. Enable **Google** as a sign-in provider in Authentication.
 2. Add your dev and production domains to the authorized-domains list.
-3. Write Firestore security rules — see [Security](#security) below.
+3. Deploy the security rules: `firebase deploy --only firestore:rules` — see [Security](#security) below.
+4. Sign in once, then promote yourself to admin by hand in the Firestore console (`users/{uid}` → `role: "admin"`, `group: "כללי"`). There is no built-in admin account.
+
+> Note: the committed `.firebaserc` points at the production project `tzafit-presence`. A `.env.local` with those keys means `npm run dev` reads and writes live data.
+
+### Deployment
+
+Every push to `main` builds and deploys Firebase **Hosting** via `.github/workflows/deploy.yml` (Firebase config comes from repository secrets). Firestore rules are **not** deployed by CI — deploy them manually after changing `firestore.rules`.
 
 Collections are created automatically on first run: if `students` or `history` come back empty, the app batch-seeds the built-in 133-student roster and 7 days of randomly generated attendance history.
 
@@ -100,7 +109,7 @@ loading spinner
   → the app
 ```
 
-Admins are granted by a hardcoded email check in `getOrCreateUserRole` (`utils/storage.js`). Everyone else is created as a `counselor` with no group and waits for an admin to assign one in the staff screen.
+Every new sign-up is created as a `counselor` with no group (the security rules reject anything else) and waits for an admin to assign one in the staff screen. Admins are promoted by another admin, or by hand in the Firebase console.
 
 ### Data model (Firestore)
 
@@ -109,9 +118,10 @@ Admins are granted by a hardcoded email check in `getOrCreateUserRole` (`utils/s
 | `students` | `"1"`, `"2"`, … | `{ id, name, dorm, room, parentName, parentPhone, notes }` |
 | `history` | `` `${date}_${session}` `` | `{ date, session, records: { [studentId]: "present"\|"absent"\|"leave"\|null }, markedBy, timestamp }` |
 | `emergency` | `state` (singleton) | `{ active, reason, triggeredAt, records: { [studentId]: boolean } }` |
+| `settings` | `groups` (singleton) | `{ names: [string, string, string, string] }` — the dorm group names, renamable by admins |
 | `users` | Firebase Auth `uid` | `{ uid, displayName, email, photoURL, role, group, needsNameSetup, createdAt }` |
 
-`role` is `"admin"` or `"counselor"`. `group` is a dorm name (`פניקס`, `קומביין`, `סקויה`, `סהרה`) or `כללי` for full access; empty means *pending assignment*.
+`role` is `"admin"` or `"counselor"`. `group` is one of the names in `settings/groups` (default `פניקס`, `קומביין`, `סקויה`, `סהרה`) or `כללי` for full access; empty means *pending assignment*. Dorm colors are tied to the slot index in `settings/groups`, so they survive a rename (`utils/dormColors.js`).
 
 The emergency doc being a **single document** is what makes the shared live checklist work — one `onSnapshot` and every device sees every other counselor's confirmations immediately.
 
@@ -129,18 +139,20 @@ The emergency doc being a **single document** is what makes the shared live chec
 | `Login.jsx` | Google sign-in |
 | `NameSetup.jsx` | One-time display-name prompt |
 | `GroupPending.jsx` | Waiting screen for counselors without a group |
-| `Analytics.jsx` | **Currently unused** — not imported anywhere |
+| `ToastProvider.jsx` | `useToast()` — shared toast notifications |
+| `ConfirmModal.jsx` | Shared confirmation dialog |
 
 ---
 
 ## Security
 
-**All role and group checks in this app are client-side only** — they control what the UI shows, not what the database allows. Firestore security rules are the only real access boundary, and they are configured in the Firebase console, not in this repo. At minimum, rules should:
+**All role and group checks in the app are client-side only** — they control what the UI shows, not what the database allows. The real access boundary is [`firestore.rules`](firestore.rules), tested by `firestore.rules.test.mjs`. In short:
 
-- require authentication for every collection;
-- let a user read their own `users` document but never write their own `role` or `group`;
-- restrict writes to `users` and `emergency/state` to admins;
-- allow authenticated counselors to write `history` and `students`.
+- a user with no group (pending) can read or write nothing except their own `users` doc;
+- users can never change their own `role` or `group`; new sign-ups must be `counselor` with an empty group;
+- approved counselors can read/write `students` and `history` (no deletes on `history`), and mark students safe in `emergency/state` — only admins can start or end an emergency;
+- only admins can list/edit other users and change `settings/groups`;
+- anything else is denied.
 
 Note that a counselor's assigned group only sets the *default* filter in the UI — it does not prevent them from switching the filter and marking another group. Treat group assignment as convenience, not as a permission.
 
@@ -152,7 +164,8 @@ Note that a counselor's assigned group only sets the *default* filter in the UI 
 
 Worth knowing before changing behavior:
 
-- **`history[0]` is "the current round."** History is ordered by `timestamp desc`, and every tap rewrites that record's timestamp. Editing an older round therefore moves it to position `0`, and both the dashboard counters and the emergency-mode seeding will start treating it as the current state.
-- **Unmarked students are counted inconsistently** — the dashboard counts them as absent, while the CSV export counts them as present.
-- **`setActiveTab` is called during render** in `renderTabContent`'s permission guards, which React warns about.
+- **`history[0]` is "the current round."** History is sorted by date + session order (not by write time), and the dashboard treats the first entry as current state.
+- **Emergency updates overwrite the whole document.** Marking a student safe writes the full `emergency/state` from the client's copy, so two people marking at the same instant can drop one of the marks. Attendance marking doesn't have this problem (it merges a single field).
+- **`setActiveTab` is called during render** in `App.jsx`'s tab-permission guard — intentional "adjust state during render" pattern, not an effect.
 - The seeded demo history is generated with `Math.random()`, so a fresh cloud project starts with plausible-looking but entirely fictional attendance data.
+- Without Firebase config there's no way to sign in from the login screen; the localStorage fallback only works with a demo user already in `sessionStorage`.
