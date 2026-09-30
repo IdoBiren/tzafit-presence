@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Check, X, Home, Search, User, Filter } from 'lucide-react';
 import { useToast } from './ToastProvider';
 import { getDormColor } from '../utils/dormColors';
+import { getHistoryCutoffDate } from '../utils/storage';
 
 const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilter, clearInitialDormFilter, user, groupNames }) => {
   const { showToast } = useToast();
@@ -144,6 +145,7 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilt
                 type="date" 
                 className="text-input" 
                 value={date} 
+                min={getHistoryCutoffDate()}
                 onChange={(e) => setDate(e.target.value)} 
                 required 
               />

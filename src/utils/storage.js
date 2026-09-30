@@ -11,8 +11,8 @@ import {
   getDocs,
   deleteDoc,
   query,
-  orderBy,
   where,
+  limit,
   writeBatch
 } from 'firebase/firestore';
 
@@ -330,14 +330,32 @@ export const subscribeToStudents = (onUpdate) => {
   }
 };
 
-// 2. האזנה להיסטוריית נוכחות (מסודרת מהחדש לישן)
+// כמה ימים אחורה האפליקציה מאזינה להיסטוריה. כל פתיחה של האפליקציה קוראת
+// את כל המסמכים בחלון, ובמסלול החינמי של Firebase יש 50K קריאות ביום -
+// האזנה לכל ההיסטוריה הייתה גדלה בלי סוף עד שהאפליקציה נחסמת.
+export const HISTORY_WINDOW_DAYS = 30;
+
+// התאריך המוקדם ביותר בחלון, בפורמט YYYY-MM-DD (כמו שדה date במסמכים)
+export const getHistoryCutoffDate = () => {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - HISTORY_WINDOW_DAYS);
+  return cutoff.toISOString().split('T')[0];
+};
+
+// 2. האזנה להיסטוריית נוכחות של החלון האחרון (מסודרת מהחדש לישן)
 export const subscribeToHistory = (onUpdate) => {
   if (isFirebaseConfigured) {
-    const historyQuery = query(collection(db, "history"), orderBy("timestamp", "desc"));
+    const historyQuery = query(collection(db, "history"), where("date", ">=", getHistoryCutoffDate()));
     return onSnapshot(historyQuery, async (snapshot) => {
       if (snapshot.empty) {
-        // אם אין היסטוריה בענן, נבצע Seeding אוטומטי
-        await seedCloudHistory();
+        // חלון ריק (למשל אחרי חופשה) אינו אומר שהאוסף ריק. זורעים נתוני דמה
+        // רק אם אין אף מסמך בכלל - אחרת היינו כותבים נוכחות אקראית לפרודקשן.
+        const anyHistory = await getDocs(query(collection(db, "history"), limit(1)));
+        if (anyHistory.empty) {
+          await seedCloudHistory();
+        } else {
+          onUpdate([]);
+        }
       } else {
         const historyList = snapshot.docs.map(d => d.data());
         onUpdate(sortHistoryChronologically(historyList));
@@ -348,10 +366,22 @@ export const subscribeToHistory = (onUpdate) => {
   } else {
     // Fallback ל-LocalStorage
     initializeLocalStorage();
-    const history = JSON.parse(localStorage.getItem("tzafit_history_v7"));
-    onUpdate(sortHistoryChronologically(history || []));
+    const cutoff = getHistoryCutoffDate();
+    const history = JSON.parse(localStorage.getItem("tzafit_history_v7")) || [];
+    onUpdate(sortHistoryChronologically(history.filter(h => h.date >= cutoff)));
     return () => {};
   }
+};
+
+// 2א. שליפה חד-פעמית של כל ההיסטוריה (לייצוא CSV בלבד - לא האזנה, כדי
+// שהקריאות יחויבו רק כשמישהו באמת מייצא)
+export const fetchAllHistory = async () => {
+  if (isFirebaseConfigured) {
+    const snapshot = await getDocs(collection(db, "history"));
+    return sortHistoryChronologically(snapshot.docs.map(d => d.data()));
+  }
+  initializeLocalStorage();
+  return sortHistoryChronologically(JSON.parse(localStorage.getItem("tzafit_history_v7")) || []);
 };
 
 // 3. האזנה למצב חירום גלובלי

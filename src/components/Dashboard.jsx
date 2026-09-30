@@ -16,9 +16,11 @@ import {
   X
 } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { fetchAllHistory, HISTORY_WINDOW_DAYS } from '../utils/storage';
 
 const Dashboard = ({ students, history, onNavigateToTab, setDormFilter, groupNames }) => {
   const [modalData, setModalData] = useState(null); // { groupName, statusName, color }
+  const [exporting, setExporting] = useState(false);
 
   // קבלת הרשומה האחרונה ביותר לחישוב נוכחות עדכני
   const latestRecord = history && history.length > 0 ? history[0] : null;
@@ -203,8 +205,22 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter, groupNam
   const chronicAbsences = getChronicAbsences();
 
   // 6. ייצוא כל ההיסטוריה לקובץ CSV בעברית
-  const handleExportCSV = () => {
-    if (!history || history.length === 0) {
+  // ה-prop history מכיל רק את החלון האחרון (HISTORY_WINDOW_DAYS), ולכן הייצוא
+  // שולף את כל ההיסטוריה בנפרד - פעם אחת, רק כשלוחצים על הכפתור.
+  const handleExportCSV = async () => {
+    setExporting(true);
+    let fullHistory;
+    try {
+      fullHistory = await fetchAllHistory();
+    } catch (error) {
+      console.error("שגיאה בשליפת ההיסטוריה לייצוא:", error);
+      alert('שגיאה בשליפת ההיסטוריה מהענן. נסה שוב.');
+      return;
+    } finally {
+      setExporting(false);
+    }
+
+    if (fullHistory.length === 0) {
       alert('אין היסטוריית נוכחות לייצוא!');
       return;
     }
@@ -214,7 +230,7 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter, groupNam
     const csvRows = [];
     csvRows.push(headers.join(','));
 
-    history.forEach(session => {
+    fullHistory.forEach(session => {
       let sessionName = 'רישום נוכחות';
       if (session.session === 'morning') sessionName = 'רישום פתיחת יום';
       else if (session.session === 'afternoon') sessionName = 'רישום ארוחת ערב';
@@ -282,10 +298,11 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter, groupNam
           type="button" 
           className="btn-primary" 
           onClick={handleExportCSV}
+          disabled={exporting}
           style={{ padding: '0.5rem 1.25rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
         >
           <Download size={16} />
-          <span>ייצוא דוחות ל-CSV</span>
+          <span>{exporting ? 'מכין קובץ...' : 'ייצוא דוחות ל-CSV'}</span>
         </button>
       </div>
 
@@ -344,7 +361,7 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter, groupNam
 
         <div className="card stat-card">
           <div className="stat-info">
-            <h3>ממוצע נוכחות</h3>
+            <h3>ממוצע נוכחות ({HISTORY_WINDOW_DAYS} יום)</h3>
             <div className="stat-number" style={{ color: overall.rate >= 90 ? 'var(--present)' : 'var(--leave)' }}>
               {overall.rate}%
             </div>
@@ -476,7 +493,7 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter, groupNam
           <div className="card">
             <h3 style={{ fontWeight: 800, fontSize: '1.15rem', color: '#be123c', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <UserMinus size={18} />
-              <span>נוכחות נמוכה (&lt;92%)</span>
+              <span>נוכחות נמוכה (&lt;92%, {HISTORY_WINDOW_DAYS} יום אחרונים)</span>
             </h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
               חניכים המופיעים כאן צברו היעדרויות מרובות ומצריכים בירור או פנייה להורים.

@@ -37,6 +37,7 @@ Push to `main` → `.github/workflows/deploy.yml` builds and deploys **Hosting o
 
 - Sessions: `morning, afternoon, evening, night` (UI: פתיחת יום / ארוחת ערב / כיבוי אורות / לילה). `SESSION_ORDER` in storage.js.
 - `history` is sorted chronologically (date, then session) by `sortHistoryChronologically`, **not** by `timestamp`. `history[0]` = "current round" for Dashboard.
+- **The app only listens to the last `HISTORY_WINDOW_DAYS` (30) of history** (`where('date', '>=', cutoff)`). The project is on the free Spark plan (50K reads/day, and the app *stops working* when it runs out), and every app open reads every doc in the listener — so never widen a listener to an unbounded, growing collection. Dashboard averages and chronic absences cover the window only; CSV export fetches all history once via `fetchAllHistory`. Watch usage in Firebase Console → Firestore → Usage.
 - Group names are dynamic (`settings/groups`), renamable by admins via `renameGroup` (atomic batch over settings + students.dorm + users.group). Don't hardcode dorm names — use the `groupNames` prop. Dorm color is by slot index: `utils/dormColors.js`. `'כללי'` (all groups) and `'הכל'` (UI "all" filter) are reserved tokens, not group names.
 - User `group === ''` means pending approval; rules deny everything to pending users. New sign-ups are forced to `role: 'counselor', group: ''` by the rules. **There is no hardcoded admin** — the first admin is set by hand in the Firebase console.
 
@@ -44,7 +45,7 @@ Push to `main` → `.github/workflows/deploy.yml` builds and deploys **Hosting o
 
 - **Multi-writer docs: write single fields, never the whole doc.** Attendance uses `setDoc(..., {merge: true})` with one student; emergency marks use `updateEmergencyRecords` (`updateDoc` on `records.<id>`). `saveEmergencyState` (full `setDoc`) is only for start/end of an emergency — don't use it for per-student marks, or concurrent counselors overwrite each other.
 - `saveStudents` rewrites the entire collection (sets every doc, deletes missing ones). Fine for 133 rows; don't copy it for per-item edits.
-- Seeding: if `students`/`history` come back empty, the client auto-seeds the built-in 133-student roster and 7 days of **random** fake history. A rules/permission error that yields an empty snapshot won't trigger this (the error callback fires instead), but be careful with anything that empties those collections.
+- Seeding: if `students` comes back empty, or the whole `history` collection is empty (an empty 30-day window alone doesn't count), the client auto-seeds the built-in 133-student roster and 7 days of **random** fake history. A rules/permission error that yields an empty snapshot won't trigger this (the error callback fires instead), but be careful with anything that empties those collections.
 - localStorage keys are versioned (`tzafit_students_v8`, `tzafit_history_v7`, …). Bump the version when the stored shape changes.
 - `react-hooks` lint rules are strict (no set-state-in-effect). The codebase uses the "adjust state during render" pattern instead (see `dormSyncKey` in RollCall, `visitedTabs` in App). Match it.
 
