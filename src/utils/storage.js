@@ -5,6 +5,8 @@ import {
   doc,
   onSnapshot,
   setDoc,
+  updateDoc,
+  deleteField,
   getDoc,
   getDocs,
   deleteDoc,
@@ -370,9 +372,20 @@ export const subscribeToEmergency = (onUpdate) => {
   } else {
     // Fallback ל-LocalStorage
     initializeLocalStorage();
-    const emergencyState = JSON.parse(localStorage.getItem("tzafit_emergency_v7"));
-    onUpdate(emergencyState);
-    return () => {};
+    const loadEmergency = () => {
+      onUpdate(JSON.parse(localStorage.getItem("tzafit_emergency_v7")));
+    };
+    loadEmergency();
+
+    const handleStorageChange = (e) => {
+      if (!e.key || e.key === "tzafit_emergency_v7") {
+        loadEmergency();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }
 };
 
@@ -472,6 +485,36 @@ export const saveEmergencyState = async (state) => {
   } else {
     // Fallback ל-LocalStorage
     localStorage.setItem("tzafit_emergency_v7", JSON.stringify(state));
+  }
+};
+
+// 6א. עדכון שדות בודדים ב-records של מצב החירום (סימון בטוח / הוספת והסרת חניכים)
+// saveEmergencyState כותב את כל המסמך מהעותק המקומי של הלקוח, ולכן שני
+// מדריכים שמסמנים באותו רגע היו דורסים זה את סימוני זה. כאן כל שינוי נוגע
+// רק בשדה records.<id> שלו - כמו updateSingleAttendanceRecord בנוכחות.
+// changes: { [studentId]: true | false | null } - null מסיר את החניך מהרשימה.
+export const updateEmergencyRecords = async (changes) => {
+  if (isFirebaseConfigured) {
+    try {
+      const fieldUpdates = {};
+      Object.entries(changes).forEach(([studentId, value]) => {
+        fieldUpdates[`records.${studentId}`] = value === null ? deleteField() : value;
+      });
+      await updateDoc(doc(db, "emergency", "state"), fieldUpdates);
+    } catch (error) {
+      console.error("שגיאה בעדכון רשומת חירום בענן:", error);
+      throw error;
+    }
+  } else {
+    // Fallback ל-LocalStorage
+    const state = JSON.parse(localStorage.getItem("tzafit_emergency_v7")) || { active: false, triggeredAt: null, records: {}, reason: "" };
+    const records = { ...state.records };
+    Object.entries(changes).forEach(([studentId, value]) => {
+      if (value === null) delete records[studentId];
+      else records[studentId] = value;
+    });
+    localStorage.setItem("tzafit_emergency_v7", JSON.stringify({ ...state, records }));
+    window.dispatchEvent(new Event('storage'));
   }
 };
 

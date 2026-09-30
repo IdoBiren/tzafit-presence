@@ -30,6 +30,7 @@ import {
   updateSingleAttendanceRecord,
   subscribeToEmergency, 
   saveEmergencyState,
+  updateEmergencyRecords,
   getOrCreateUserRole,
   updateUserProfile,
   subscribeToUserProfile,
@@ -196,21 +197,23 @@ function AppContent() {
       await saveStudents(updatedList);
       
       // אם אנחנו באמצע מצב חירום, נוסיף מזהים חדשים לרשומת החירום כ"טרם אומת"
+      // ונסיר חניכים שנמחקו. רק השדות שהשתנו נכתבים, כדי לא לדרוס סימוני
+      // "בטוח" שמדריכים אחרים ביצעו במקביל.
       if (emergencyState.active) {
-        const updatedEmergencyRecords = { ...emergencyState.records };
+        const changes = {};
         updatedList.forEach(s => {
-          if (updatedEmergencyRecords[s.id] === undefined) {
-            updatedEmergencyRecords[s.id] = false;
+          if (emergencyState.records[s.id] === undefined) {
+            changes[s.id] = false;
           }
         });
-        // הסרת חניכים שנמחקו
-        Object.keys(updatedEmergencyRecords).forEach(id => {
+        Object.keys(emergencyState.records).forEach(id => {
           if (!updatedList.some(s => s.id === id)) {
-            delete updatedEmergencyRecords[id];
+            changes[id] = null;
           }
         });
-        const newEmergencyState = { ...emergencyState, records: updatedEmergencyRecords };
-        await saveEmergencyState(newEmergencyState);
+        if (Object.keys(changes).length > 0) {
+          await updateEmergencyRecords(changes);
+        }
       }
     } catch {
       alert("שגיאה בסנכרון השינויים. אנא בדוק את החיבור לרשת ונסה שוב.");
@@ -258,6 +261,16 @@ function AppContent() {
       showToast('שגיאה בעדכון מצב החירום בענן. נסה שוב.', 'error');
     } finally {
       setDbOperating(false);
+    }
+  };
+
+  // סימון חניך בודד כבטוח / טרם אומת במצב חירום - כותב רק את השדה שלו
+  const handleSetEmergencyRecord = async (studentId, isSafe) => {
+    try {
+      await updateEmergencyRecords({ [studentId]: isSafe });
+    } catch (error) {
+      console.error("שגיאה בעדכון סימון חירום:", error);
+      showToast('שגיאה בשמירת הסימון בענן. נסה שוב.', 'error');
     }
   };
 
@@ -544,6 +557,7 @@ function AppContent() {
                 students={students}
                 emergencyState={emergencyState}
                 onSaveEmergencyState={handleSaveEmergencyState}
+                onSetEmergencyRecord={handleSetEmergencyRecord}
               />
             </div>
           )}

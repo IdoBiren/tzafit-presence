@@ -42,7 +42,7 @@ Push to `main` → `.github/workflows/deploy.yml` builds and deploys **Hosting o
 
 ## Known pitfalls
 
-- **Emergency writes the whole doc.** `saveEmergencyState` does a full `setDoc` from the client's copy, so two counselors marking students safe at the same moment can overwrite each other's marks. Attendance (`updateSingleAttendanceRecord`) does it right: `setDoc(..., {merge: true})` with a single field. Follow that pattern for anything multi-writer.
+- **Multi-writer docs: write single fields, never the whole doc.** Attendance uses `setDoc(..., {merge: true})` with one student; emergency marks use `updateEmergencyRecords` (`updateDoc` on `records.<id>`). `saveEmergencyState` (full `setDoc`) is only for start/end of an emergency — don't use it for per-student marks, or concurrent counselors overwrite each other.
 - `saveStudents` rewrites the entire collection (sets every doc, deletes missing ones). Fine for 133 rows; don't copy it for per-item edits.
 - Seeding: if `students`/`history` come back empty, the client auto-seeds the built-in 133-student roster and 7 days of **random** fake history. A rules/permission error that yields an empty snapshot won't trigger this (the error callback fires instead), but be careful with anything that empties those collections.
 - localStorage keys are versioned (`tzafit_students_v8`, `tzafit_history_v7`, …). Bump the version when the stored shape changes.

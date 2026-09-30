@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AlertOctagon, ShieldCheck, ShieldAlert, Undo, Flame, BellRing, Search, X } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 
-const EmergencyMode = ({ students, emergencyState, onSaveEmergencyState }) => {
+const EmergencyMode = ({ students, emergencyState, onSaveEmergencyState, onSetEmergencyRecord }) => {
   const [reasonInput, setReasonInput] = useState('');
   const [pendingStart, setPendingStart] = useState(false);
   const [pendingEnd, setPendingEnd] = useState(false);
@@ -35,22 +35,15 @@ const EmergencyMode = ({ students, emergencyState, onSaveEmergencyState }) => {
     handleStartEmergency();
   };
 
-  // סימון חניך כבטוח
+  // סימון חניך כבטוח - נכתב רק השדה של החניך, כדי לא לדרוס סימונים
+  // שמדריכים אחרים ביצעו באותו רגע
   const handleMarkSafe = (studentId) => {
-    const updatedRecords = { ...emergencyState.records, [studentId]: true };
-    onSaveEmergencyState({
-      ...emergencyState,
-      records: updatedRecords
-    });
+    onSetEmergencyRecord(studentId, true);
   };
 
   // ביטול סימון בטוח (החזרה לטרם אומת)
   const handleMarkUnsafe = (studentId) => {
-    const updatedRecords = { ...emergencyState.records, [studentId]: false };
-    onSaveEmergencyState({
-      ...emergencyState,
-      records: updatedRecords
-    });
+    onSetEmergencyRecord(studentId, false);
   };
 
   // ביטול מוחלט של החירום

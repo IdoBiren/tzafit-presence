@@ -13,6 +13,7 @@ import {
   doc,
   setDoc,
   updateDoc,
+  getDoc,
   getDocs,
   collection,
 } from 'firebase/firestore';
@@ -150,6 +151,27 @@ const run = async () => {
     updateDoc(doc(admin, 'emergency', 'state'), { active: true, reason: 'תרגיל', triggeredAt: new Date(0).toISOString() }),
     'allow'
   );
+
+  // updateEmergencyRecords כותב נתיב שדה בודד (records.<id>) ולא את כל
+  // המסמך - שני מדריכים שמסמנים במקביל לא דורסים זה את זה.
+  const otherCounselor = testEnv.authenticatedContext('other-counselor-uid').firestore();
+  await check(
+    'מדריך מסמן חניך בודד בנתיב שדה (records.2)',
+    updateDoc(doc(counselor, 'emergency', 'state'), { 'records.2': true }),
+    'allow'
+  );
+  await check(
+    'מדריך אחר מסמן חניך אחר במקביל (records.3)',
+    updateDoc(doc(otherCounselor, 'emergency', 'state'), { 'records.3': true }),
+    'allow'
+  );
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    const snap = await getDoc(doc(ctx.firestore(), 'emergency', 'state'));
+    const records = snap.data().records || {};
+    const ok = records['2'] === true && records['3'] === true;
+    if (ok) { passed++; console.log('  PASS  שני הסימונים המקבילים נשמרו'); }
+    else { failures++; console.log(`  FAIL  שני הסימונים המקבילים נשמרו  (records=${JSON.stringify(records)})`); }
+  });
 
   console.log('settings/groups - שינוי שמות קבוצות');
   await check(

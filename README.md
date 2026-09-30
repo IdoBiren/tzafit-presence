@@ -165,7 +165,6 @@ Note that a counselor's assigned group only sets the *default* filter in the UI 
 Worth knowing before changing behavior:
 
 - **`history[0]` is "the current round."** History is sorted by date + session order (not by write time), and the dashboard treats the first entry as current state.
-- **Emergency updates overwrite the whole document.** Marking a student safe writes the full `emergency/state` from the client's copy, so two people marking at the same instant can drop one of the marks. Attendance marking doesn't have this problem (it merges a single field).
 - **`setActiveTab` is called during render** in `App.jsx`'s tab-permission guard — intentional "adjust state during render" pattern, not an effect.
 - The seeded demo history is generated with `Math.random()`, so a fresh cloud project starts with plausible-looking but entirely fictional attendance data.
 - Without Firebase config there's no way to sign in from the login screen; the localStorage fallback only works with a demo user already in `sessionStorage`.
