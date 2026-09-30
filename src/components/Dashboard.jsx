@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { 
   Users, 
   UserCheck, 
-  UserX, 
-  PlaneTakeoff, 
-  ChevronLeft, 
+  UserX,
+  Home,
+  ChevronLeft,
   CalendarDays, 
   History, 
   BarChart3, 
@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
-const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
+const Dashboard = ({ students, history, onNavigateToTab, setDormFilter, groupNames }) => {
   const [modalData, setModalData] = useState(null); // { groupName, statusName, color }
 
   // קבלת הרשומה האחרונה ביותר לחישוב נוכחות עדכני
@@ -65,7 +65,7 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
   const overall = calculateOverallStats();
 
   // 3. חלוקת קבוצות וחישוב נתונים לכל קבוצה
-  const groups = ["פניקס", "קומביין", "סקויה", "סהרה"];
+  const groups = groupNames || [];
   
   const groupData = groups.map(groupName => {
     const groupStudents = students.filter(s => s.dorm === groupName);
@@ -327,7 +327,7 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter }) => {
             <div className="stat-number" style={{ color: 'var(--leave)' }}>{leaveCount}</div>
           </div>
           <div className="stat-icon amber">
-            <PlaneTakeoff size={22} />
+            <Home size={22} />
           </div>
         </div>
 

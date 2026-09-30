@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { UserPlus, Edit2, Trash2, X, Save, UserCheck, RotateCcw } from 'lucide-react';
+import { getDormColor } from '../utils/dormColors';
 
-const StudentManager = ({ students, onSaveStudents, onResetStudents, user }) => {
+const StudentManager = ({ students, onSaveStudents, onResetStudents, user, groupNames }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDorm, setSelectedDorm] = useState(() => {
     if (user && user.group && user.group !== 'כללי') {
@@ -14,17 +15,23 @@ const StudentManager = ({ students, onSaveStudents, onResetStudents, user }) => 
 
   // ערכי טופס
   const [formName, setFormName] = useState('');
-  const [formDorm, setFormDorm] = useState('פניקס');
+  const [formDorm, setFormDorm] = useState(groupNames?.[0] || '');
   const [formRoom, setFormRoom] = useState('');
   const [formParentName, setFormParentName] = useState('');
   const [formParentPhone, setFormParentPhone] = useState('');
   const [formNotes, setFormNotes] = useState('');
 
+  // אם הקבוצה שנבחרה כבר לא קיימת (שונה שם שלה), חוזרים לתצוגת הכל
+  // במקום להישאר על מסך ריק בשקט.
+  if (selectedDorm !== 'הכל' && groupNames?.length && !groupNames.includes(selectedDorm)) {
+    setSelectedDorm('הכל');
+  }
+
   // פתיחת מודל להוספת חניך חדש
   const handleOpenAddModal = () => {
     setEditingStudent(null);
     setFormName('');
-    setFormDorm('פניקס');
+    setFormDorm(groupNames?.[0] || '');
     setFormRoom('');
     setFormParentName('');
     setFormParentPhone('');
@@ -134,10 +141,7 @@ const StudentManager = ({ students, onSaveStudents, onResetStudents, user }) => 
             onChange={(e) => setSelectedDorm(e.target.value)}
           >
             <option value="הכל">כל הקבוצות</option>
-            <option value="פניקס">פניקס</option>
-            <option value="קומביין">קומביין</option>
-            <option value="סקויה">סקויה</option>
-            <option value="סהרה">סהרה</option>
+            {(groupNames || []).map(g => <option key={g} value={g}>{g}</option>)}
           </select>
         </div>
 
@@ -228,14 +232,8 @@ const StudentManager = ({ students, onSaveStudents, onResetStudents, user }) => 
             {/* Mobile Cards View */}
             <div className="mobile-only student-mobile-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {filteredStudents.map(student => {
-                const getDormColor = (dormName) => {
-                  if (dormName === 'פניקס') return '#3b82f6';
-                  if (dormName === 'קומביין') return '#10b981';
-                  if (dormName === 'סקויה') return '#d97706';
-                  return '#8b5cf6'; // סהרה
-                };
-                const dormColor = getDormColor(student.dorm);
-                
+                const dormColor = getDormColor(student.dorm, groupNames);
+
                 return (
                   <div key={student.id} className="card student-mobile-card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', backgroundColor: 'white' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -338,10 +336,7 @@ const StudentManager = ({ students, onSaveStudents, onResetStudents, user }) => 
                     value={formDorm}
                     onChange={(e) => setFormDorm(e.target.value)}
                   >
-                    <option value="פניקס">פניקס</option>
-                    <option value="קומביין">קומביין</option>
-                    <option value="סקויה">סקויה</option>
-                    <option value="סהרה">סהרה</option>
+                    {(groupNames || []).map(g => <option key={g} value={g}>{g}</option>)}
                   </select>
                 </div>
 

@@ -69,6 +69,16 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // רשימת שמות הקבוצות הקבועה (settings/groups) - מסמך יחיד משותף, בדיוק
+    // כמו emergency/state. כל מדריך מאושר יכול ליצור אותו אם הוא חסר (בוטסטראפ
+    // אוטומטי ע"י כל לקוח, לא בהכרח אדמין) - אבל רק אדמין יכול לשנות/למחוק
+    // אחרי שהוא כבר קיים.
+    match /settings/{docId} {
+      allow read: if isApproved();
+      allow create: if isApproved();
+      allow update, delete: if isAdmin();
+    }
+
     match /users/{userId} {
       // כל אחד קורא את המסמך שלו; סריקת כל המשתמשים היא למסך ניהול הצוות.
       allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());

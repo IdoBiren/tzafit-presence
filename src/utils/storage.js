@@ -1,19 +1,21 @@
 // שירות ניהול נתונים היברידי (Firebase Firestore / LocalStorage) - נוכחות פנימיית צפית
 import { db, isFirebaseConfigured } from './firebase';
-import { 
-  collection, 
-  doc, 
-  onSnapshot, 
-  setDoc, 
+import {
+  collection,
+  doc,
+  onSnapshot,
+  setDoc,
   getDoc,
-  getDocs, 
-  deleteDoc, 
-  query, 
+  getDocs,
+  deleteDoc,
+  query,
   orderBy,
+  where,
   writeBatch
 } from 'firebase/firestore';
 
 const SESSION_ORDER = { morning: 0, afternoon: 1, evening: 2, night: 3 };
+const DEFAULT_GROUP_NAMES = ["פניקס", "קומביין", "סקויה", "סהרה"];
 
 // מיון היסטוריה לפי מתי הסבב התרחש, לא לפי מתי מישהו נגע בו אחרון.
 // updateSingleAttendanceRecord דורס את timestamp בכל לחיצה, ולכן עריכה של
@@ -289,6 +291,9 @@ const initializeLocalStorage = () => {
       }
     ];
     localStorage.setItem("tzafit_users_v7", JSON.stringify(mockUsers));
+  }
+  if (!localStorage.getItem("tzafit_groups_v1")) {
+    localStorage.setItem("tzafit_groups_v1", JSON.stringify(DEFAULT_GROUP_NAMES));
   }
 };
 
@@ -673,6 +678,102 @@ export const subscribeToUserProfile = (uid, onUpdate) => {
 // 12. איפוס חניכים לרשימת ברירת המחדל
 export const resetStudentsToDefault = async () => {
   await saveStudents(MOCK_STUDENTS);
+  // מאפסים גם את שמות הקבוצות - אחרת "איפוס לברירת מחדל" משאיר את
+  // settings/groups עם שם ששונה בעבר, בזמן שהחניכים כבר חזרו לשם המקורי.
+  if (isFirebaseConfigured) {
+    await setDoc(doc(db, "settings", "groups"), { names: DEFAULT_GROUP_NAMES });
+  } else {
+    localStorage.setItem("tzafit_groups_v1", JSON.stringify(DEFAULT_GROUP_NAMES));
+    window.dispatchEvent(new Event('storage'));
+  }
+};
+
+// 13. האזנה לרשימת שמות הקבוצות (settings/groups)
+export const subscribeToGroupNames = (onUpdate) => {
+  if (isFirebaseConfigured) {
+    const groupsDoc = doc(db, "settings", "groups");
+    return onSnapshot(groupsDoc, async (snapshot) => {
+      if (!snapshot.exists()) {
+        // אתחול מסמך הקבוצות בענן אם לא קיים
+        await setDoc(groupsDoc, { names: DEFAULT_GROUP_NAMES });
+      } else {
+        onUpdate(snapshot.data().names || DEFAULT_GROUP_NAMES);
+      }
+    }, (error) => {
+      console.error("שגיאה בהאזנה לשמות הקבוצות בענן:", error);
+    });
+  } else {
+    // Fallback ל-LocalStorage
+    initializeLocalStorage();
+    const loadGroups = () => {
+      const names = JSON.parse(localStorage.getItem("tzafit_groups_v1")) || DEFAULT_GROUP_NAMES;
+      onUpdate(names);
+    };
+    loadGroups();
+
+    const handleStorageChange = (e) => {
+      if (!e.key || e.key === "tzafit_groups_v1") {
+        loadGroups();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }
+};
+
+// 14. שינוי שם קבוצה קיימת בכל המקומות בו-זמנית (batch אטומי)
+export const renameGroup = async (oldName, newName) => {
+  const trimmedNewName = newName.trim();
+
+  if (isFirebaseConfigured) {
+    try {
+      const groupsDocRef = doc(db, "settings", "groups");
+      const groupsSnap = await getDoc(groupsDocRef);
+      const currentNames = groupsSnap.exists() ? (groupsSnap.data().names || DEFAULT_GROUP_NAMES) : DEFAULT_GROUP_NAMES;
+      const idx = currentNames.indexOf(oldName);
+      if (idx === -1) throw new Error(`הקבוצה "${oldName}" לא נמצאה ברשימה הנוכחית.`);
+
+      const updatedNames = [...currentNames];
+      updatedNames[idx] = trimmedNewName; // עדכון במקום - אותו אינדקס, כדי שהצבע יישאר יציב
+
+      const studentsSnap = await getDocs(query(collection(db, "students"), where("dorm", "==", oldName)));
+      const usersSnap = await getDocs(query(collection(db, "users"), where("group", "==", oldName)));
+
+      const batch = writeBatch(db);
+      batch.set(groupsDocRef, { names: updatedNames });
+      studentsSnap.docs.forEach(d => batch.update(d.ref, { dorm: trimmedNewName }));
+      usersSnap.docs.forEach(d => batch.update(d.ref, { group: trimmedNewName }));
+
+      await batch.commit();
+    } catch (error) {
+      console.error("שגיאה בשינוי שם הקבוצה בענן:", error);
+      throw error;
+    }
+  } else {
+    // Fallback ל-LocalStorage - אין batch אטומי אמיתי, אבל גם אין תרחיש
+    // מרובה-משתמשים אמיתי במצב דמו, אז עדכון רציף מספיק.
+    initializeLocalStorage();
+    const currentNames = JSON.parse(localStorage.getItem("tzafit_groups_v1")) || DEFAULT_GROUP_NAMES;
+    const idx = currentNames.indexOf(oldName);
+    if (idx === -1) throw new Error(`הקבוצה "${oldName}" לא נמצאה ברשימה הנוכחית.`);
+    const updatedNames = [...currentNames];
+    updatedNames[idx] = trimmedNewName;
+    localStorage.setItem("tzafit_groups_v1", JSON.stringify(updatedNames));
+
+    const students = JSON.parse(localStorage.getItem("tzafit_students_v8")) || [];
+    localStorage.setItem("tzafit_students_v8", JSON.stringify(
+      students.map(s => s.dorm === oldName ? { ...s, dorm: trimmedNewName } : s)
+    ));
+
+    const users = JSON.parse(localStorage.getItem("tzafit_users_v7")) || [];
+    localStorage.setItem("tzafit_users_v7", JSON.stringify(
+      users.map(u => u.group === oldName ? { ...u, group: trimmedNewName } : u)
+    ));
+
+    window.dispatchEvent(new Event('storage'));
+  }
 };
 
 

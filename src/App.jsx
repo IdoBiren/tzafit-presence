@@ -33,7 +33,8 @@ import {
   getOrCreateUserRole,
   updateUserProfile,
   subscribeToUserProfile,
-  resetStudentsToDefault
+  resetStudentsToDefault,
+  subscribeToGroupNames
 } from './utils/storage';
 import { auth, isFirebaseConfigured } from './utils/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -62,6 +63,7 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState('rollcall');
   const [visitedTabs, setVisitedTabs] = useState(() => new Set(['rollcall']));
   const [dormFilter, setDormFilter] = useState(null);
+  const [groupNames, setGroupNames] = useState([]);
 
   // מחווני טעינה וסנכרון לענן
   const [loading, setLoading] = useState(true);
@@ -73,6 +75,7 @@ function AppContent() {
     let unsubscribeHistory = () => {};
     let unsubscribeEmergency = () => {};
     let unsubscribeUserProfile = () => {};
+    let unsubscribeGroupNames = () => {};
 
     const startSubscriptions = () => {
       // 1. האזנה לחניכים
@@ -89,6 +92,11 @@ function AppContent() {
       unsubscribeEmergency = subscribeToEmergency((updatedEmergency) => {
         setEmergencyState(updatedEmergency);
         setLoading(false); // הפסקת מסך הטעינה הראשוני ברגע שהנתונים מגיעים
+      });
+
+      // 4. האזנה לשמות הקבוצות
+      unsubscribeGroupNames = subscribeToGroupNames((updatedGroupNames) => {
+        setGroupNames(updatedGroupNames);
       });
     };
 
@@ -138,6 +146,7 @@ function AppContent() {
         unsubscribeHistory();
         unsubscribeEmergency();
         unsubscribeUserProfile();
+        unsubscribeGroupNames();
       };
     } else {
       // מצב דמו / LocalStorage
@@ -175,6 +184,7 @@ function AppContent() {
         unsubscribeHistory();
         unsubscribeEmergency();
         unsubscribeUserProfile();
+        unsubscribeGroupNames();
       };
     }
   }, [user?.uid]);
@@ -498,6 +508,7 @@ function AppContent() {
               initialDormFilter={dormFilter}
               clearInitialDormFilter={clearInitialDormFilter}
               user={user}
+              groupNames={groupNames}
             />
           </div>
           {desiredVisited.has('dashboard') && (
@@ -507,6 +518,7 @@ function AppContent() {
                 history={history}
                 onNavigateToTab={setActiveTab}
                 setDormFilter={setDormFilter}
+                groupNames={groupNames}
               />
             </div>
           )}
@@ -517,12 +529,13 @@ function AppContent() {
                 onSaveStudents={handleSaveStudents}
                 onResetStudents={handleResetStudents}
                 user={user}
+                groupNames={groupNames}
               />
             </div>
           )}
           {desiredVisited.has('staff') && (
             <div style={{ display: activeTab === 'staff' ? 'block' : 'none' }}>
-              <StaffManager />
+              <StaffManager groupNames={groupNames} />
             </div>
           )}
           {desiredVisited.has('emergency') && (

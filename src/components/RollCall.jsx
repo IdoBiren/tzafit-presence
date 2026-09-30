@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Check, X, PlaneTakeoff, Search, User, Filter } from 'lucide-react';
+import { Check, X, Home, Search, User, Filter } from 'lucide-react';
 import { useToast } from './ToastProvider';
+import { getDormColor } from '../utils/dormColors';
 
-const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilter, clearInitialDormFilter, user }) => {
+const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilter, clearInitialDormFilter, user, groupNames }) => {
   const { showToast } = useToast();
   const [selectedDorm, setSelectedDorm] = useState(() => {
     if (initialDormFilter) {
@@ -27,7 +28,7 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilt
   // מתעדכן בזמן רינדור (ולא ב-effect) כשאחד הערכים משתנה, כדי ש-selectedDorm
   // יתעדכן באותו רינדור בלי הבזק של הערך הקודם - ראו:
   // https://react.dev/reference/react/useState#storing-information-from-previous-renders
-  const dormSyncKey = `${initialDormFilter || ''}|${user?.group || ''}`;
+  const dormSyncKey = `${initialDormFilter || ''}|${user?.group || ''}|${(groupNames || []).join(',')}`;
   const [appliedDormSyncKey, setAppliedDormSyncKey] = useState(dormSyncKey);
   if (dormSyncKey !== appliedDormSyncKey) {
     setAppliedDormSyncKey(dormSyncKey);
@@ -35,6 +36,10 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilt
       setSelectedDorm(initialDormFilter);
     } else if (user && user.group && user.group !== 'כללי') {
       setSelectedDorm(user.group);
+    } else if (selectedDorm !== 'הכל' && groupNames && groupNames.length && !groupNames.includes(selectedDorm)) {
+      // הקבוצה שנבחרה כבר לא קיימת (שונה שם שלה) - חוזרים לתצוגת הכל
+      // במקום להישאר על מסך ריק בשקט.
+      setSelectedDorm('הכל');
     }
   }
 
@@ -127,13 +132,6 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilt
   const leaveCount = sortedStudents.filter(s => tempRecords[s.id] === 'leave').length;
   const markedCount = sortedStudents.filter(s => tempRecords[s.id] !== null && tempRecords[s.id] !== undefined).length;
 
-  const getDormLabelColor = (dorm) => {
-    if (dorm === 'פניקס') return '#3b82f6';
-    if (dorm === 'קומביין') return '#10b981';
-    if (dorm === 'סקויה') return '#d97706';
-    return '#8b5cf6'; // סהרה
-  };
-
   return (
     <div className="rollcall-wrapper">
       <div className="card" style={{ marginBottom: '1.5rem', padding: '1.25rem' }}>
@@ -213,7 +211,7 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilt
           
           {/* Desktop Filter View (Button Group) */}
           <div className="btn-group desktop-only">
-            {['הכל', 'פניקס', 'קומביין', 'סקויה', 'סהרה'].map((dorm) => (
+            {['הכל', ...(groupNames || [])].map((dorm) => (
               <button 
                 key={dorm} 
                 type="button" 
@@ -234,10 +232,7 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilt
             style={{ fontSize: '0.85rem', padding: '0.4rem 0.8rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)' }}
           >
             <option value="הכל">כל הקבוצות</option>
-            <option value="פניקס">פניקס</option>
-            <option value="קומביין">קומביין</option>
-            <option value="סקויה">סקויה</option>
-            <option value="סהרה">סהרה</option>
+            {(groupNames || []).map(g => <option key={g} value={g}>{g}</option>)}
           </select>
         </div>
 
@@ -318,7 +313,7 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilt
                         )}
                       </div>
                       <div className="student-meta-tags">
-                        <span className="tag-dorm" style={{ color: getDormLabelColor(student.dorm), backgroundColor: `${getDormLabelColor(student.dorm)}12` }}>
+                        <span className="tag-dorm" style={{ color: getDormColor(student.dorm, groupNames), backgroundColor: `${getDormColor(student.dorm, groupNames)}12` }}>
                           {student.dorm}
                         </span>
                         <span className="tag-room">חדר {student.room}</span>
@@ -350,7 +345,7 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilt
                     className={`action-btn leave-btn ${currentStatus === 'leave' ? 'active' : ''}`}
                     onClick={() => handleStatusChange(student.id, 'leave')}
                   >
-                    <PlaneTakeoff size={14} />
+                    <Home size={14} />
                     <span>בבית</span>
                   </button>
                 </div>

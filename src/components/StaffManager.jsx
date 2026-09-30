@@ -1,11 +1,60 @@
 import { useState, useEffect } from 'react';
 import { Shield, ShieldAlert, User, Save, Trash2, CheckCircle, Clock } from 'lucide-react';
-import { subscribeToUsers, updateUserProfile, deleteUserRecord } from '../utils/storage';
+import { subscribeToUsers, updateUserProfile, deleteUserRecord, renameGroup } from '../utils/storage';
+import { useToast } from './ToastProvider';
+import ConfirmModal from './ConfirmModal';
 
-function StaffManager() {
+const RESERVED_GROUP_TOKENS = ['כללי', 'הכל'];
+
+function StaffManager({ groupNames }) {
+  const { showToast } = useToast();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
+  // מצב שינוי שם קבוצה
+  const [renameSourceGroup, setRenameSourceGroup] = useState(groupNames?.[0] || '');
+  const [renameNewName, setRenameNewName] = useState('');
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [confirmRenameOpen, setConfirmRenameOpen] = useState(false);
+
+  if (groupNames?.length && !groupNames.includes(renameSourceGroup)) {
+    setRenameSourceGroup(groupNames[0]);
+  }
+
+  const validateRenameInput = () => {
+    const trimmed = renameNewName.trim();
+    if (!trimmed) return 'יש להזין שם חדש לקבוצה.';
+    if (RESERVED_GROUP_TOKENS.includes(trimmed)) return 'שם זה שמור לשימוש המערכת ואינו זמין.';
+    if (groupNames.some(g => g !== renameSourceGroup && g === trimmed)) return 'קיימת כבר קבוצה בשם הזה.';
+    if (trimmed === renameSourceGroup) return 'זהו כבר שם הקבוצה הנוכחי.';
+    return null;
+  };
+
+  const handleRequestRename = () => {
+    const validationError = validateRenameInput();
+    if (validationError) {
+      showToast(validationError, 'error');
+      return;
+    }
+    setConfirmRenameOpen(true);
+  };
+
+  const handleConfirmRename = async () => {
+    setConfirmRenameOpen(false);
+    setIsRenaming(true);
+    try {
+      await renameGroup(renameSourceGroup, renameNewName.trim());
+      showToast(`הקבוצה "${renameSourceGroup}" שונתה בהצלחה ל-"${renameNewName.trim()}".`, 'success');
+      setRenameNewName('');
+    } catch (err) {
+      console.error("שגיאה בשינוי שם קבוצה:", err);
+      showToast('שגיאה בשינוי שם הקבוצה. אנא נסה שוב.', 'error');
+    } finally {
+      setIsRenaming(false);
+    }
+  };
+
+
   // מעקב אחר מצב עריכה מקומי של שדות לכל משתמש
   const [editStates, setEditStates] = useState({});
   const [savingUids, setSavingUids] = useState({});
@@ -102,6 +151,57 @@ function StaffManager() {
         </p>
       </div>
 
+      <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+        <h3 style={{ margin: '0 0 0.25rem 0', fontWeight: 800, fontSize: '1.1rem', color: '#1e293b' }}>שינוי שם קבוצה</h3>
+        <p style={{ margin: '0 0 1rem 0', fontSize: '0.85rem', color: '#64748b' }}>
+          שינוי שם ישפיע מיידית על כל החניכים והמדריכים המשויכים לקבוצה זו. לא ניתן להוסיף או להסיר קבוצות - רק לשנות שם.
+        </p>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div className="form-group" style={{ minWidth: '180px' }}>
+            <label htmlFor="rename-source-group">קבוצה קיימת</label>
+            <select
+              id="rename-source-group"
+              className="select-input"
+              value={renameSourceGroup}
+              onChange={(e) => setRenameSourceGroup(e.target.value)}
+              disabled={isRenaming}
+            >
+              {(groupNames || []).map(g => <option key={g} value={g}>{g}</option>)}
+            </select>
+          </div>
+          <div className="form-group" style={{ minWidth: '200px', flex: 1 }}>
+            <label htmlFor="rename-new-name">שם חדש</label>
+            <input
+              id="rename-new-name"
+              type="text"
+              className="text-input"
+              value={renameNewName}
+              onChange={(e) => setRenameNewName(e.target.value)}
+              placeholder="לדוגמה: פלמ״ח"
+              disabled={isRenaming}
+            />
+          </div>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={handleRequestRename}
+            disabled={isRenaming || !renameNewName.trim()}
+          >
+            {isRenaming ? 'משנה שם...' : 'שנה שם קבוצה'}
+          </button>
+        </div>
+      </div>
+
+      <ConfirmModal
+        open={confirmRenameOpen}
+        title="אישור שינוי שם קבוצה"
+        message={`האם אתה בטוח שברצונך לשנות את שם הקבוצה "${renameSourceGroup}" ל-"${renameNewName.trim()}"? הפעולה תעדכן מיידית את כל החניכים והמדריכים בקבוצה זו.`}
+        confirmLabel="שנה שם"
+        danger
+        onConfirm={handleConfirmRename}
+        onCancel={() => setConfirmRenameOpen(false)}
+      />
+
       {users.length === 0 ? (
         <div style={styles.emptyState}>
           <User size={48} color="#94a3b8" />
@@ -186,10 +286,7 @@ function StaffManager() {
                     >
                       <option value="">-- בחר קבוצה (ממתין להקצאה) --</option>
                       <option value="כללי">כללי (כל הקבוצות / מנהל)</option>
-                      <option value="פניקס">פניקס</option>
-                      <option value="קומביין">קומביין</option>
-                      <option value="סקויה">סקויה</option>
-                      <option value="סהרה">סהרה</option>
+                      {(groupNames || []).map(g => <option key={g} value={g}>{g}</option>)}
                     </select>
                   </div>
                 </div>

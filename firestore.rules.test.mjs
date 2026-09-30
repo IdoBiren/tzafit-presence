@@ -75,6 +75,9 @@ const run = async () => {
     await setDoc(doc(db, 'emergency', 'state'), {
       active: false, reason: '', triggeredAt: null, records: {},
     });
+    await setDoc(doc(db, 'settings', 'groups'), {
+      names: ['פניקס', 'קומביין', 'סקויה', 'סהרה'],
+    });
   });
 
   const admin = testEnv.authenticatedContext('admin-uid').firestore();
@@ -145,6 +148,33 @@ const run = async () => {
   await check(
     'אדמין משנה active בחירום',
     updateDoc(doc(admin, 'emergency', 'state'), { active: true, reason: 'תרגיל', triggeredAt: new Date(0).toISOString() }),
+    'allow'
+  );
+
+  console.log('settings/groups - שינוי שמות קבוצות');
+  await check(
+    'מדריך מאושר קורא settings/groups',
+    getDocs(collection(counselor, 'settings')),
+    'allow'
+  );
+  await check(
+    'ממתין (group ריק) קורא settings/groups',
+    getDocs(collection(pending, 'settings')),
+    'deny'
+  );
+  await check(
+    'מדריך (לא אדמין) יוצר settings/groups מחדש כבוטסטראפ',
+    setDoc(doc(counselor, 'settings', 'groups2'), { names: ['פניקס', 'קומביין', 'סקויה', 'סהרה'] }),
+    'allow'
+  );
+  await check(
+    'מדריך מנסה לשנות שם קבוצה קיים',
+    updateDoc(doc(counselor, 'settings', 'groups'), { names: ['שם חדש', 'קומביין', 'סקויה', 'סהרה'] }),
+    'deny'
+  );
+  await check(
+    'אדמין משנה שם קבוצה',
+    updateDoc(doc(admin, 'settings', 'groups'), { names: ['שם חדש', 'קומביין', 'סקויה', 'סהרה'] }),
     'allow'
   );
 
