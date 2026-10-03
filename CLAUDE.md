@@ -11,13 +11,13 @@ Hebrew, RTL, mobile-first attendance + emergency roll-call app for the Tzafit bo
 | `npm run build` | Must pass. The >500 kB chunk warning is known (firebase in the main chunk) |
 | `npm run test:rules` | Behavioral tests of `firestore.rules` against the emulator. Needs Java (JDK) + firebase-tools. Only test suite in the repo |
 
-There are no unit/component tests. Verify UI changes in the browser preview.
+There are no unit/component tests. Verify UI changes in the browser preview — use the **`tzafit-demo`** launch config (port 5174): `--mode demo` loads the gitignored `.env.demo.local`, which blanks `VITE_FIREBASE_PROJECT_ID`, so the app runs on localStorage and can't touch production. Sign in by setting `sessionStorage.tzafit_demo_user` (admin: uid `demo-admin-123`, role `admin`, group `כללי`) and reloading twice (the first load seeds localStorage). If `.env.demo.local` is missing, recreate it with the single line `VITE_FIREBASE_PROJECT_ID=`.
 
 ## ⚠️ Local dev talks to production
 
 `.env.local` points at the real Firebase project `tzafit-presence`. `npm run dev` reads and writes **live data** used by counselors. Don't test destructive flows (delete students/users, start emergency, rename group) locally unless the user OKs it. There is no staging project.
 
-Without `.env.local`, `storage.js` falls back to localStorage, but `Login.jsx` shows only a "not configured" notice — there's no demo login button. Demo mode only works if `sessionStorage.tzafit_demo_user` is already set.
+Without Firebase config, `storage.js` falls back to localStorage, but `Login.jsx` shows only a "not configured" notice — there's no demo login button. Demo mode only works if `sessionStorage.tzafit_demo_user` is already set (see the demo preview above).
 
 ## Deploy
 
@@ -44,7 +44,9 @@ Push to `main` → `.github/workflows/deploy.yml` builds and deploys **Hosting o
 ## Known pitfalls
 
 - **Multi-writer docs: write single fields, never the whole doc.** Attendance uses `setDoc(..., {merge: true})` with one student; emergency marks use `updateEmergencyRecords` (`updateDoc` on `records.<id>`). `saveEmergencyState` (full `setDoc`) is only for start/end of an emergency — don't use it for per-student marks, or concurrent counselors overwrite each other.
-- `saveStudents` rewrites the entire collection (sets every doc, deletes missing ones). Fine for 133 rows; don't copy it for per-item edits.
+- Students are written one doc at a time: `addStudent` (transaction that picks max+1 and retries if the id was taken concurrently), `updateStudent` (`updateDoc`, so editing a student someone else deleted fails instead of resurrecting it), `deleteStudent`. Never go back to saving the whole list from the client's copy — that silently deleted students added concurrently by other counselors.
+- **No silent save failures.** Firestore doesn't reject writes while offline; they just wait. So every write in the UI goes through `withPendingTimeout` (`utils/saveErrors.js`) to show a "waiting for network" state after 8s, and every error is shown with `describeSaveError` (Hebrew, per Firestore error code — e.g. `resource-exhausted` = daily quota). Dialogs close only after the save resolves; on failure they stay open with the typed data. Listener `onError`s feed the red "data not updating" banner in App.jsx.
+- Firestore uses a **persistent IndexedDB cache** (`firebase.js`), so offline attendance marks survive closing the app. `beforeunload` in App.jsx warns if writes are still pending (fallback for browsers without IndexedDB).
 - **No cloud auto-seeding.** An empty `students` or `history` collection stays empty (a new school year starts that way). The built-in roster (`MOCK_STUDENTS`, last year's students) and fake random history only exist in localStorage demo mode — the "reset to defaults" button was removed on purpose so nobody restores last year's roster into production. Don't reintroduce seeding on empty snapshots — it undoes deliberate deletions and writes fake attendance to production.
 - localStorage keys are versioned (`tzafit_students_v8`, `tzafit_history_v7`, …). Bump the version when the stored shape changes.
 - `react-hooks` lint rules are strict (no set-state-in-effect). The codebase uses the "adjust state during render" pattern instead (see `dormSyncKey` in RollCall, `visitedTabs` in App). Match it.
@@ -53,5 +55,5 @@ Push to `main` → `.github/workflows/deploy.yml` builds and deploys **Hosting o
 
 - UI text and code comments are in **Hebrew**; comments explain *why*. Commit messages are English, imperative, one line summary (see `git log`).
 - Styling: CSS variables/classes in `src/index.css` plus inline style objects per component. No CSS framework.
-- User feedback: `useToast()` from `ToastProvider` and `ConfirmModal` — prefer these over `alert`/`window.confirm` (some old call sites still use the latter).
+- User feedback: `useToast()` from `ToastProvider` and `ConfirmModal` — prefer these over `alert`/`window.confirm` (a few old call sites, e.g. logout and dashboard export, still use the latter).
 - Mobile first: counselors use phones. Keep touch targets large; check layout at 375px.

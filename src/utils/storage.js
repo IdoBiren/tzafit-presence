@@ -7,6 +7,7 @@ import {
   setDoc,
   updateDoc,
   deleteField,
+  runTransaction,
   getDoc,
   getDocs,
   deleteDoc,
@@ -275,7 +276,7 @@ const initializeLocalStorage = () => {
 // ----------------------------------------------------
 
 // 1. האזנה לרשימת חניכים
-export const subscribeToStudents = (onUpdate) => {
+export const subscribeToStudents = (onUpdate, onError) => {
   if (isFirebaseConfigured) {
     const studentsCol = collection(db, "students");
     return onSnapshot(studentsCol, async (snapshot) => {
@@ -287,14 +288,25 @@ export const subscribeToStudents = (onUpdate) => {
       onUpdate(studentsList);
     }, (error) => {
       console.error("שגיאה בהאזנה לחניכים בענן:", error);
+      onError?.(error);
     });
   } else {
     // Fallback ל-LocalStorage
     initializeLocalStorage();
-    const students = JSON.parse(localStorage.getItem("tzafit_students_v8"));
-    onUpdate(students);
-    // החזרת פונקציית ביטול האזנה דמי (Dummy Unsubscribe)
-    return () => {};
+    const loadStudents = () => {
+      onUpdate(JSON.parse(localStorage.getItem("tzafit_students_v8")) || []);
+    };
+    loadStudents();
+
+    const handleStorageChange = (e) => {
+      if (!e.key || e.key === "tzafit_students_v8") {
+        loadStudents();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }
 };
 
@@ -311,7 +323,7 @@ export const getHistoryCutoffDate = () => {
 };
 
 // 2. האזנה להיסטוריית נוכחות של החלון האחרון (מסודרת מהחדש לישן)
-export const subscribeToHistory = (onUpdate) => {
+export const subscribeToHistory = (onUpdate, onError) => {
   if (isFirebaseConfigured) {
     const historyQuery = query(collection(db, "history"), where("date", ">=", getHistoryCutoffDate()));
     return onSnapshot(historyQuery, async (snapshot) => {
@@ -321,14 +333,27 @@ export const subscribeToHistory = (onUpdate) => {
       onUpdate(sortHistoryChronologically(historyList));
     }, (error) => {
       console.error("שגיאה בהאזנה להיסטוריה בענן:", error);
+      onError?.(error);
     });
   } else {
     // Fallback ל-LocalStorage
     initializeLocalStorage();
-    const cutoff = getHistoryCutoffDate();
-    const history = JSON.parse(localStorage.getItem("tzafit_history_v7")) || [];
-    onUpdate(sortHistoryChronologically(history.filter(h => h.date >= cutoff)));
-    return () => {};
+    const loadHistory = () => {
+      const cutoff = getHistoryCutoffDate();
+      const history = JSON.parse(localStorage.getItem("tzafit_history_v7")) || [];
+      onUpdate(sortHistoryChronologically(history.filter(h => h.date >= cutoff)));
+    };
+    loadHistory();
+
+    const handleStorageChange = (e) => {
+      if (!e.key || e.key === "tzafit_history_v7") {
+        loadHistory();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }
 };
 
@@ -344,7 +369,7 @@ export const fetchAllHistory = async () => {
 };
 
 // 3. האזנה למצב חירום גלובלי
-export const subscribeToEmergency = (onUpdate) => {
+export const subscribeToEmergency = (onUpdate, onError) => {
   if (isFirebaseConfigured) {
     const emergencyDoc = doc(db, "emergency", "state");
     return onSnapshot(emergencyDoc, async (snapshot) => {
@@ -357,6 +382,7 @@ export const subscribeToEmergency = (onUpdate) => {
       }
     }, (error) => {
       console.error("שגיאה בהאזנה למצב חירום בענן:", error);
+      onError?.(error);
     });
   } else {
     // Fallback ל-LocalStorage
@@ -382,38 +408,64 @@ export const subscribeToEmergency = (onUpdate) => {
 // ממשק כתיבה ועדכון נתונים אסינכרוני (Database Writers)
 // ----------------------------------------------------
 
-// 4. שמירה ועדכון רשימת החניכים הכללית
-export const saveStudents = async (updatedList) => {
+// 4. הוספה, עריכה ומחיקה של חניך בודד
+// כל פעולה נוגעת רק במסמך של החניך שלה. בעבר נשמרה כל הרשימה מהעותק
+// המקומי ונמחק מהענן כל חניך שלא הופיע בה - כך ששני מדריכים שהוסיפו חניך
+// באותו זמן מחקו זה לזה את החניך בשקט.
+
+// מזהה = המקסימום הידוע + 1. ה-transaction מוודא שהמסמך לא קיים לפני
+// היצירה; אם מישהו תפס את המספר באותו רגע, מנסים את הבא.
+export const addStudent = async (studentData, knownStudents) => {
+  let candidate = Math.max(0, ...knownStudents.map(s => parseInt(s.id) || 0)) + 1;
+
   if (isFirebaseConfigured) {
-    try {
-      // שליפת כל החניכים הקיימים כרגע בענן לצורך השוואה ומחיקה
-      const querySnapshot = await getDocs(collection(db, "students"));
-      const cloudIds = querySnapshot.docs.map(doc => doc.id);
-      
-      const batch = writeBatch(db);
-      
-      // הוספה/עדכון של כל החניכים מהרשימה המעודכנת
-      updatedList.forEach(student => {
-        const docRef = doc(db, "students", student.id);
-        batch.set(docRef, student);
+    for (let attempt = 0; attempt < 10; attempt++, candidate++) {
+      const id = candidate.toString();
+      const docRef = doc(db, "students", id);
+      const created = await runTransaction(db, async (tx) => {
+        const existing = await tx.get(docRef);
+        if (existing.exists()) return false;
+        tx.set(docRef, { ...studentData, id });
+        return true;
       });
-      
-      // איתור ומחיקה של חניכים שהוסרו מהרשימה המקומית
-      cloudIds.forEach(id => {
-        if (!updatedList.some(s => s.id === id)) {
-          const docRef = doc(db, "students", id);
-          batch.delete(docRef);
-        }
-      });
-      
-      await batch.commit();
-    } catch (error) {
-      console.error("שגיאה בשמירת חניכים לענן:", error);
-      throw error;
+      if (created) return id;
     }
+    throw new Error('לא נמצא מזהה פנוי לחניך החדש. רענן את הדף ונסה שוב.');
   } else {
     // Fallback ל-LocalStorage
-    localStorage.setItem("tzafit_students_v8", JSON.stringify(updatedList));
+    const students = JSON.parse(localStorage.getItem("tzafit_students_v8")) || [];
+    while (students.some(s => s.id === candidate.toString())) candidate++;
+    const id = candidate.toString();
+    localStorage.setItem("tzafit_students_v8", JSON.stringify([...students, { ...studentData, id }]));
+    window.dispatchEvent(new Event('storage'));
+    return id;
+  }
+};
+
+export const updateStudent = async (studentId, fields) => {
+  if (isFirebaseConfigured) {
+    // updateDoc ולא setDoc: אם החניך נמחק בינתיים ע"י מדריך אחר, העריכה
+    // נכשלת עם שגיאה במקום ליצור אותו מחדש בשקט
+    await updateDoc(doc(db, "students", studentId), fields);
+  } else {
+    const students = JSON.parse(localStorage.getItem("tzafit_students_v8")) || [];
+    if (!students.some(s => s.id === studentId)) {
+      throw new Error('החניך כבר לא קיים ברשימה - ייתכן שנמחק על ידי מדריך אחר.');
+    }
+    localStorage.setItem("tzafit_students_v8", JSON.stringify(
+      students.map(s => s.id === studentId ? { ...s, ...fields } : s)
+    ));
+    window.dispatchEvent(new Event('storage'));
+  }
+};
+
+export const deleteStudent = async (studentId) => {
+  if (isFirebaseConfigured) {
+    await deleteDoc(doc(db, "students", studentId));
+  } else {
+    const students = JSON.parse(localStorage.getItem("tzafit_students_v8")) || [];
+    localStorage.setItem("tzafit_students_v8", JSON.stringify(students.filter(s => s.id !== studentId)));
+    window.dispatchEvent(new Event('storage'));
   }
 };
 
@@ -708,7 +760,7 @@ export const subscribeToUserProfile = (uid, onUpdate) => {
 };
 
 // 13. האזנה לרשימת שמות הקבוצות (settings/groups)
-export const subscribeToGroupNames = (onUpdate) => {
+export const subscribeToGroupNames = (onUpdate, onError) => {
   if (isFirebaseConfigured) {
     const groupsDoc = doc(db, "settings", "groups");
     return onSnapshot(groupsDoc, async (snapshot) => {
@@ -720,6 +772,7 @@ export const subscribeToGroupNames = (onUpdate) => {
       }
     }, (error) => {
       console.error("שגיאה בהאזנה לשמות הקבוצות בענן:", error);
+      onError?.(error);
     });
   } else {
     // Fallback ל-LocalStorage

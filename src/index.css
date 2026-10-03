@@ -410,6 +410,27 @@ a {
   border-color: var(--leave);
 }
 
+/* באנרים קבועים מתחת לכותרת: אין רשת / נתונים לא מתעדכנים */
+.status-banner {
+  padding: 0.65rem 1rem;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.status-banner-offline {
+  background-color: #fef3c7;
+  color: #92400e;
+  border-bottom: 1px solid #fcd34d;
+}
+
+.status-banner-error {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border-bottom: 1px solid #fca5a5;
+}
+
 /* תג מצב שמירה קטן ליד שם החניך */
 .save-badge {
   font-size: 0.75rem;
@@ -422,6 +443,16 @@ a {
 
 .save-badge.error {
   color: var(--absent);
+}
+
+/* כתיבה שלא אושרה תוך כמה שניות - כנראה אין קליטה */
+.save-badge.pending {
+  color: #b45309;
+  background-color: #fef3c7;
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 /* שורת ההתקדמות נשארת דביקה מתחת לכותרת בזמן גלילת רשימת החניכים */

@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { UserPlus, Edit2, Trash2, X, Save, UserCheck, Download } from 'lucide-react';
 import { getDormColor } from '../utils/dormColors';
+import { describeSaveError, withPendingTimeout } from '../utils/saveErrors';
+import { useToast } from './ToastProvider';
+import ConfirmModal from './ConfirmModal';
 
-const StudentManager = ({ students, onSaveStudents, user, groupNames }) => {
+const StudentManager = ({ students, onAddStudent, onUpdateStudent, onDeleteStudent, user, groupNames }) => {
+  const { showToast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDorm, setSelectedDorm] = useState(() => {
     if (user && user.group && user.group !== 'כללי') {
@@ -21,6 +25,14 @@ const StudentManager = ({ students, onSaveStudents, user, groupNames }) => {
   const [formParentPhone, setFormParentPhone] = useState('');
   const [formNotes, setFormNotes] = useState('');
 
+  // מצב שמירה: החלון נסגר רק אחרי שהשרת אישר. בכישלון הוא נשאר פתוח עם
+  // מה שהוקלד ועם השגיאה בתוכו - לא alert שנעלם, ולא סגירה שקטה.
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSlow, setSaveSlow] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [duplicateWarning, setDuplicateWarning] = useState(''); // 'קבוצה|שם' שכבר הוזהר עליו
+  const [pendingDelete, setPendingDelete] = useState(null); // { id, name }
+
   // אם הקבוצה שנבחרה כבר לא קיימת (שונה שם שלה), חוזרים לתצוגת הכל
   // במקום להישאר על מסך ריק בשקט.
   if (selectedDorm !== 'הכל' && groupNames?.length && !groupNames.includes(selectedDorm)) {
@@ -36,6 +48,8 @@ const StudentManager = ({ students, onSaveStudents, user, groupNames }) => {
     setFormParentName('');
     setFormParentPhone('');
     setFormNotes('');
+    setFormError('');
+    setDuplicateWarning('');
     setIsModalOpen(true);
   };
 
@@ -48,63 +62,85 @@ const StudentManager = ({ students, onSaveStudents, user, groupNames }) => {
     setFormParentName(student.parentName || '');
     setFormParentPhone(student.parentPhone || '');
     setFormNotes(student.notes || '');
+    setFormError('');
+    setDuplicateWarning('');
     setIsModalOpen(true);
   };
 
-  // מחיקת חניך
+  // מחיקת חניך - אישור ב-ConfirmModal, ותוצאה (הצלחה/כישלון) ב-toast
   const handleDeleteStudent = (studentId, studentName) => {
-    if (window.confirm(`האם אתה בטוח שברצונך למחוק את החניך "${studentName}" מהפנימייה? פעולה זו תסיר אותו לצמיתות.`)) {
-      const updatedList = students.filter(s => s.id !== studentId);
-      onSaveStudents(updatedList);
+    setPendingDelete({ id: studentId, name: studentName });
+  };
+
+  const confirmDelete = async () => {
+    const { id, name } = pendingDelete;
+    setPendingDelete(null);
+    try {
+      await withPendingTimeout(onDeleteStudent(id), () => {
+        showToast(`מחיקת ${name} ממתינה לרשת - היא תושלם כשהחיבור יחזור.`, 'info', 6000);
+      });
+      showToast(`${name} נמחק/ה מהרשימה.`, 'success');
+    } catch (error) {
+      showToast(`מחיקת ${name} נכשלה: ${describeSaveError(error)}`, 'error', 8000);
     }
   };
 
+  const closeModal = () => {
+    if (isSaving) return; // לא סוגרים באמצע שמירה - אחרת התוצאה לא תוצג לאף אחד
+    setIsModalOpen(false);
+  };
+
   // שמירת הטופס (הוספה או עריכה)
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    
-    if (!formName.trim() || !formRoom.trim()) {
-      alert('נא למלא את כל שדות החובה!');
+    setFormError('');
+
+    const name = formName.trim();
+    const room = formRoom.trim();
+    if (!name || !room) {
+      setFormError('נא למלא שם מלא ומספר חדר.');
+      return;
+    }
+    // חניך בלי קבוצה תקינה לא מופיע באף סינון - נעלם מהרשימות בשקט
+    if (!formDorm || !(groupNames || []).includes(formDorm)) {
+      setFormError('נא לבחור קבוצה. אם הרשימה ריקה, רשימת הקבוצות עוד לא נטענה - רענן את הדף.');
+      return;
+    }
+    // שם זהה באותה קבוצה הוא כמעט תמיד הוספה כפולה בטעות - מבקשים אישור
+    const duplicate = students.some(s =>
+      s.id !== editingStudent?.id && s.dorm === formDorm && s.name.trim() === name
+    );
+    const duplicateKey = `${formDorm}|${name}`;
+    if (duplicate && duplicateWarning !== duplicateKey) {
+      setDuplicateWarning(duplicateKey);
+      setFormError(`כבר קיים/ת חניך/ה בשם "${name}" בקבוצה ${formDorm}. לחץ שוב על שמירה כדי להוסיף בכל זאת.`);
       return;
     }
 
-    let updatedList;
+    const fields = {
+      name,
+      dorm: formDorm,
+      room,
+      parentName: formParentName.trim(),
+      parentPhone: formParentPhone.trim(),
+      notes: formNotes.trim()
+    };
 
-    if (editingStudent) {
-      // עריכה
-      updatedList = students.map(s => {
-        if (s.id === editingStudent.id) {
-          return {
-            ...s,
-            name: formName.trim(),
-            dorm: formDorm,
-            room: formRoom.trim(),
-            parentName: formParentName.trim(),
-            parentPhone: formParentPhone.trim(),
-            notes: formNotes.trim()
-          };
-        }
-        return s;
-      });
-    } else {
-      // הוספה - יצירת מזהה ייחודי חדש
-      // 0 כבסיס: Math.max על רשימה ריקה מחזיר -Infinity, והחניך הראשון היה
-      // מקבל את המזהה "-Infinity"
-      const newId = (Math.max(0, ...students.map(s => parseInt(s.id) || 0)) + 1).toString();
-      const newStudent = {
-        id: newId,
-        name: formName.trim(),
-        dorm: formDorm,
-        room: formRoom.trim(),
-        parentName: formParentName.trim(),
-        parentPhone: formParentPhone.trim(),
-        notes: formNotes.trim()
-      };
-      updatedList = [...students, newStudent];
+    setIsSaving(true);
+    setSaveSlow(false);
+    try {
+      const write = editingStudent
+        ? onUpdateStudent(editingStudent.id, fields)
+        : onAddStudent(fields);
+      await withPendingTimeout(write, () => setSaveSlow(true));
+      showToast(editingStudent ? `הפרטים של ${name} עודכנו.` : `${name} נוסף/ה לרשימה.`, 'success');
+      setIsModalOpen(false);
+    } catch (error) {
+      setFormError(`השמירה נכשלה: ${describeSaveError(error)}`);
+    } finally {
+      setIsSaving(false);
+      setSaveSlow(false);
     }
-
-    onSaveStudents(updatedList);
-    setIsModalOpen(false);
   };
 
   // ייצוא רשימת החניכים המלאה (כולל פרטי הורים והערות) ל-CSV - גיבוי לפני
@@ -307,7 +343,8 @@ const StudentManager = ({ students, onSaveStudents, user, groupNames }) => {
             <button 
               type="button" 
               className="action-btn" 
-              onClick={() => setIsModalOpen(false)}
+              onClick={closeModal}
+              disabled={isSaving}
               style={{ position: 'absolute', left: '1rem', top: '1rem', padding: '0.25rem', border: 'none', background: 'none', color: 'var(--text-muted)' }}
             >
               <X size={18} />
@@ -339,7 +376,9 @@ const StudentManager = ({ students, onSaveStudents, user, groupNames }) => {
                     className="select-input"
                     value={formDorm}
                     onChange={(e) => setFormDorm(e.target.value)}
+                    required
                   >
+                    {!formDorm && <option value="">-- בחר קבוצה --</option>}
                     {(groupNames || []).map(g => <option key={g} value={g}>{g}</option>)}
                   </select>
                 </div>
@@ -382,11 +421,23 @@ const StudentManager = ({ students, onSaveStudents, user, groupNames }) => {
                 />
               </div>
 
+              {saveSlow && (
+                <div role="status" style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '0.6rem 0.8rem', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.75rem' }}>
+                  ממתין לרשת... אל תסגור את האפליקציה. אם אין קליטה, השמירה תיכשל ותוכל לנסות שוב.
+                </div>
+              )}
+              {formError && (
+                <div role="alert" style={{ backgroundColor: '#fee2e2', color: '#991b1b', padding: '0.6rem 0.8rem', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.75rem' }}>
+                  {formError}
+                </div>
+              )}
+
               <div className="form-actions">
                 <button 
                   type="button" 
                   className="btn-secondary" 
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={closeModal}
+                  disabled={isSaving}
                   style={{ padding: '0.5rem 1.25rem' }}
                 >
                   ביטול
@@ -394,16 +445,27 @@ const StudentManager = ({ students, onSaveStudents, user, groupNames }) => {
                 <button 
                   type="submit" 
                   className="btn-primary"
+                  disabled={isSaving}
                   style={{ padding: '0.5rem 1.5rem' }}
                 >
                   <Save size={16} />
-                  <span>שמור פרטים</span>
+                  <span>{isSaving ? 'שומר...' : 'שמור פרטים'}</span>
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={!!pendingDelete}
+        title="מחיקת חניך"
+        message={pendingDelete ? `האם אתה בטוח שברצונך למחוק את "${pendingDelete.name}" מהפנימייה? פעולה זו תסיר אותו/ה לצמיתות.` : ''}
+        confirmLabel="מחק"
+        danger
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 };

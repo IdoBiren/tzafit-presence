@@ -25,7 +25,9 @@ const StudentManager = lazy(() => import('./components/StudentManager'));
 const StaffManager = lazy(() => import('./components/StaffManager'));
 import { 
   subscribeToStudents, 
-  saveStudents, 
+  addStudent,
+  updateStudent,
+  deleteStudent,
   subscribeToHistory,
   updateSingleAttendanceRecord,
   subscribeToEmergency, 
@@ -38,6 +40,7 @@ import {
 } from './utils/storage';
 import { auth, isFirebaseConfigured } from './utils/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { describeSaveError, hasPendingWrites } from './utils/saveErrors';
 
 // מוצג לרגע קצר בלבד בזמן שטאב הנטען לפי דרישה מגיע - לא מסך טעינה מלא,
 // כי מעטפת האפליקציה (כותרת, ניווט) כבר מוצגת
@@ -64,6 +67,10 @@ function AppContent() {
   const [visitedTabs, setVisitedTabs] = useState(() => new Set(['rollcall']));
   const [dormFilter, setDormFilter] = useState(null);
   const [groupNames, setGroupNames] = useState([]);
+  // שגיאות האזנה פעילות, לפי מקור. בלי זה מאזין שנכשל משאיר על המסך
+  // נתונים ישנים שנראים עדכניים.
+  const [listenerErrors, setListenerErrors] = useState({});
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
 
   // מחווני טעינה וסנכרון לענן
   const [loading, setLoading] = useState(true);
@@ -77,27 +84,47 @@ function AppContent() {
     let unsubscribeUserProfile = () => {};
     let unsubscribeGroupNames = () => {};
 
+    // כל עדכון מוצלח מנקה את השגיאה של אותו מקור
+    const reportListenerError = (source) => (error) => {
+      setListenerErrors(prev => ({ ...prev, [source]: describeSaveError(error) }));
+    };
+    const clearListenerError = (source) => {
+      setListenerErrors(prev => {
+        if (!prev[source]) return prev;
+        const next = { ...prev };
+        delete next[source];
+        return next;
+      });
+    };
+
     const startSubscriptions = () => {
       // 1. האזנה לחניכים
       unsubscribeStudents = subscribeToStudents((updatedStudents) => {
         setStudents(updatedStudents);
-      });
+        clearListenerError('students');
+      }, reportListenerError('students'));
 
       // 2. האזנה להיסטוריית נוכחות
       unsubscribeHistory = subscribeToHistory((updatedHistory) => {
         setHistory(updatedHistory);
-      });
+        clearListenerError('history');
+      }, reportListenerError('history'));
 
       // 3. האזנה למצב חירום גלובלי
       unsubscribeEmergency = subscribeToEmergency((updatedEmergency) => {
         setEmergencyState(updatedEmergency);
+        clearListenerError('emergency');
         setLoading(false); // הפסקת מסך הטעינה הראשוני ברגע שהנתונים מגיעים
+      }, (error) => {
+        reportListenerError('emergency')(error);
+        setLoading(false); // אחרת מסך הטעינה נתקע לנצח בלי הסבר
       });
 
       // 4. האזנה לשמות הקבוצות
       unsubscribeGroupNames = subscribeToGroupNames((updatedGroupNames) => {
         setGroupNames(updatedGroupNames);
-      });
+        clearListenerError('groups');
+      }, reportListenerError('groups'));
     };
 
     if (isFirebaseConfigured && auth) {
@@ -189,36 +216,55 @@ function AppContent() {
     }
   }, [user?.uid]);
 
-  // שמירת רשימת חניכים מעודכנת בענן
-  const handleSaveStudents = async (updatedList) => {
-    setDbOperating(true);
-    try {
-      await saveStudents(updatedList);
-      
-      // אם אנחנו באמצע מצב חירום, נוסיף מזהים חדשים לרשומת החירום כ"טרם אומת"
-      // ונסיר חניכים שנמחקו. רק השדות שהשתנו נכתבים, כדי לא לדרוס סימוני
-      // "בטוח" שמדריכים אחרים ביצעו במקביל.
-      if (emergencyState.active) {
-        const changes = {};
-        updatedList.forEach(s => {
-          if (emergencyState.records[s.id] === undefined) {
-            changes[s.id] = false;
-          }
-        });
-        Object.keys(emergencyState.records).forEach(id => {
-          if (!updatedList.some(s => s.id === id)) {
-            changes[id] = null;
-          }
-        });
-        if (Object.keys(changes).length > 0) {
-          await updateEmergencyRecords(changes);
-        }
+  // מצב רשת ואזהרה לפני סגירה כשיש כתיבות שעוד לא אושרו ע"י השרת.
+  // המטמון הקבוע (firebase.js) שומר אותן בטלפון, אבל בדפדפן שחוסם
+  // IndexedDB הן היו נעלמות בסגירה - האזהרה היא רשת הביטחון.
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    const handleBeforeUnload = (e) => {
+      if (hasPendingWrites()) {
+        e.preventDefault();
+        e.returnValue = '';
       }
-    } catch {
-      alert("שגיאה בסנכרון השינויים. אנא בדוק את החיבור לרשת ונסה שוב.");
-    } finally {
-      setDbOperating(false);
+    };
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
+  // הוספה/עריכה/מחיקה של חניך. השגיאות נזרקות הלאה כדי ש-StudentManager
+  // ישאיר את החלון פתוח ויציג אותן - לא alert שאפשר לפספס.
+  // אם יש חירום פעיל, החניך נוסף/מוסר גם מרשימת החירום (שדה בודד בלבד, כדי
+  // לא לדרוס סימוני "בטוח" של מדריכים אחרים).
+  const syncEmergencyRecord = async (studentId, value) => {
+    if (!emergencyState.active) return;
+    try {
+      await updateEmergencyRecords({ [studentId]: value });
+    } catch (error) {
+      // החניך עצמו כבר נשמר - מדווחים בנפרד על רשימת החירום
+      showToast(`החניך נשמר, אך עדכון רשימת החירום נכשל: ${describeSaveError(error)}`, 'error', 8000);
     }
+  };
+
+  const handleAddStudent = async (studentData) => {
+    const newId = await addStudent(studentData, students);
+    await syncEmergencyRecord(newId, false);
+    return newId;
+  };
+
+  const handleUpdateStudent = async (studentId, fields) => {
+    await updateStudent(studentId, fields);
+  };
+
+  const handleDeleteStudent = async (studentId) => {
+    await deleteStudent(studentId);
+    await syncEmergencyRecord(studentId, null);
   };
 
   // עדכון נוכחות של חניך בודד (שמירה אוטומטית / זמן אמת)
@@ -416,6 +462,20 @@ function AppContent() {
         onLogout={handleLogout}
       />
 
+      {/* באנר רשת: סימונים לא אובדים, אבל המדריך צריך לדעת שהם עוד לא בשרת */}
+      {!isOnline && (
+        <div className="status-banner status-banner-offline" role="status">
+          אין חיבור לאינטרנט. סימונים נשמרים בטלפון ויישלחו כשהחיבור יחזור - אל תתנתק מהמערכת.
+        </div>
+      )}
+
+      {/* באנר מאזין שנכשל: הנתונים על המסך אולי לא עדכניים */}
+      {Object.keys(listenerErrors).length > 0 && (
+        <div className="status-banner status-banner-error" role="alert">
+          הנתונים לא מתעדכנים: {[...new Set(Object.values(listenerErrors))].join(' ')} רענן את הדף.
+        </div>
+      )}
+
       {/* באנר חירום עליון מהבהב במידה וחירום פעיל אך המשתמש בלשונית אחרת */}
       {emergencyState.active && activeTab !== 'emergency' && (
         <div 
@@ -526,7 +586,9 @@ function AppContent() {
             <div style={{ display: activeTab === 'students' ? 'block' : 'none' }}>
               <StudentManager
                 students={students}
-                onSaveStudents={handleSaveStudents}
+                onAddStudent={handleAddStudent}
+                onUpdateStudent={handleUpdateStudent}
+                onDeleteStudent={handleDeleteStudent}
                 user={user}
                 groupNames={groupNames}
               />

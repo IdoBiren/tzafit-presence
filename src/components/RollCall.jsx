@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Check, X, Home, Search, User, Filter } from 'lucide-react';
 import { useToast } from './ToastProvider';
 import { getDormColor } from '../utils/dormColors';
 import { getHistoryCutoffDate } from '../utils/storage';
+import { describeSaveError, withPendingTimeout } from '../utils/saveErrors';
 
 const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilter, clearInitialDormFilter, user, groupNames }) => {
   const { showToast } = useToast();
@@ -23,7 +24,10 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilt
   // ולכן אין צורך במצב מקומי או ב-effect בשביל זה, רק בערך נגזר.
   const markedBy = user?.displayName || 'מדריך תורן';
   const [tempRecords, setTempRecords] = useState({});
-  const [studentSaveStatus, setStudentSaveStatus] = useState({}); // id -> 'saving' | 'error'
+  const [studentSaveStatus, setStudentSaveStatus] = useState({}); // id -> 'saving' | 'pending' | 'error'
+  // מספר סידורי של הכתיבה האחרונה לכל חניך: כשמדריך לוחץ שוב לפני שהכתיבה
+  // הקודמת הסתיימה, רק תוצאת הכתיבה האחרונה קובעת את התג ואת הסימון
+  const latestWriteRef = useRef({});
 
   // סנכרון פילטר בית מהדאשבורד, או בחירת קבוצת המדריך כברירת מחדל.
   // מתעדכן בזמן רינדור (ולא ב-effect) כשאחד הערכים משתנה, כדי ש-selectedDorm
@@ -81,18 +85,31 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilt
 
     if (!onUpdateSingleAttendance) return;
 
+    const writeId = (latestWriteRef.current[studentId] || 0) + 1;
+    latestWriteRef.current[studentId] = writeId;
+    const isLatest = () => latestWriteRef.current[studentId] === writeId;
+
     try {
-      await onUpdateSingleAttendance(date, session, studentId, newStatus, markedBy);
+      // בלי קליטה Firestore לא נכשל אלא ממתין - אחרי כמה שניות מחליפים את
+      // ⋯ בתג בולט "ממתין לרשת", כדי שאף אחד לא יניח שהסימון כבר בשרת
+      await withPendingTimeout(
+        onUpdateSingleAttendance(date, session, studentId, newStatus, markedBy),
+        () => {
+          if (isLatest()) setStudentSaveStatus(prev => ({ ...prev, [studentId]: 'pending' }));
+        }
+      );
+      if (!isLatest()) return;
       setStudentSaveStatus(prev => {
         const next = { ...prev };
         delete next[studentId];
         return next;
       });
-    } catch {
+    } catch (error) {
+      if (!isLatest()) return;
       setStudentSaveStatus(prev => ({ ...prev, [studentId]: 'error' }));
       setTempRecords(prev => ({ ...prev, [studentId]: currentStatus })); // ביטול הסימון האופטימי
       const student = students.find(s => s.id === studentId);
-      showToast(`שמירת הנוכחות של ${student?.name || 'חניך'} נכשלה. נסה שוב.`, 'error');
+      showToast(`שמירת הנוכחות של ${student?.name || 'חניך'} נכשלה: ${describeSaveError(error)}`, 'error', 8000);
     }
   };
 
@@ -131,6 +148,7 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilt
   const presentCount = sortedStudents.filter(s => tempRecords[s.id] === 'present').length;
   const absentCount = sortedStudents.filter(s => tempRecords[s.id] === 'absent').length;
   const leaveCount = sortedStudents.filter(s => tempRecords[s.id] === 'leave').length;
+  const pendingCount = Object.values(studentSaveStatus).filter(st => st === 'pending').length;
   const markedCount = sortedStudents.filter(s => tempRecords[s.id] !== null && tempRecords[s.id] !== undefined).length;
 
   return (
@@ -290,6 +308,11 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilt
           <span>|</span>
           <span style={{ color: 'var(--leave)' }}>בבית: <strong>{leaveCount}</strong></span>
         </div>
+        {pendingCount > 0 && (
+          <div style={{ marginTop: '0.4rem', fontSize: '0.85rem', fontWeight: 700, color: '#b45309' }}>
+            {pendingCount} סימונים ממתינים לרשת - הם שמורים בטלפון ויישלחו כשהחיבור יחזור.
+          </div>
+        )}
       </div>
 
       {/* גריד כרטיסי החניכים */}
@@ -309,6 +332,9 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilt
                         {student.name}
                         {studentSaveStatus[student.id] === 'saving' && (
                           <span className="save-badge saving" title="שומר...">⋯</span>
+                        )}
+                        {studentSaveStatus[student.id] === 'pending' && (
+                          <span className="save-badge pending" title="הסימון שמור בטלפון וממתין לחיבור">ממתין לרשת</span>
                         )}
                         {studentSaveStatus[student.id] === 'error' && (
                           <span className="save-badge error" title="השמירה נכשלה - לחץ שוב">⚠</span>

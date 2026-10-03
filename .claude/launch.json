@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 5173
+    },
+    {
+      "name": "tzafit-demo",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--mode", "demo", "--port", "5174"],
+      "port": 5174
     }
   ]
 }

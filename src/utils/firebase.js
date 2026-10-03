@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -20,7 +20,14 @@ let auth = null;
 if (isFirebaseConfigured) {
   try {
     const app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
+    // מטמון קבוע ב-IndexedDB: סימון נוכחות שנעשה בלי קליטה נשמר בטלפון
+    // ונשלח כשהרשת חוזרת, גם אם האפליקציה נסגרה בינתיים (במטמון זיכרון
+    // הוא היה נעלם בסגירה). בונוס: פתיחה חוזרת מושכת מהשרת רק שינויים,
+    // מה שחוסך קריאות במכסה החינמית. אם הדפדפן חוסם IndexedDB (גלישה
+    // בסתר), ה-SDK נופל למטמון זיכרון, ו-beforeunload ב-App.jsx מזהיר.
+    db = initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    });
     auth = getAuth(app);
   } catch (error) {
     console.error("שגיאה באתחול חיבור Firebase:", error);
