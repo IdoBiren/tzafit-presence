@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { UserPlus, Edit2, Trash2, X, Save, UserCheck, RotateCcw, Download } from 'lucide-react';
+import { UserPlus, Edit2, Trash2, X, Save, UserCheck, Download } from 'lucide-react';
 import { getDormColor } from '../utils/dormColors';
 
-const StudentManager = ({ students, onSaveStudents, onResetStudents, user, groupNames }) => {
+const StudentManager = ({ students, onSaveStudents, user, groupNames }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDorm, setSelectedDorm] = useState(() => {
     if (user && user.group && user.group !== 'כללי') {
@@ -127,13 +127,6 @@ const StudentManager = ({ students, onSaveStudents, onResetStudents, user, group
     URL.revokeObjectURL(url);
   };
 
-  const handleResetToDefaults = () => {
-    const isConfirmed = window.confirm("האם אתה בטוח שברצונך למחוק את כל החניכים הקיימים במערכת ולשחזר את רשימת חניכי ברירת המחדל (כולל 31 חניכי קומביין, פניקס, סקויה וסהרה)? פעולה זו תסנכרן את השינויים מיידית לענן.");
-    if (isConfirmed && onResetStudents) {
-      onResetStudents();
-    }
-  };
-
   // סינון חניכים לפי בית וחיפוש
   const filteredStudents = students.filter(student => {
     const matchesDorm = selectedDorm === 'הכל' || student.dorm === selectedDorm;
@@ -169,28 +162,6 @@ const StudentManager = ({ students, onSaveStudents, onResetStudents, user, group
 
         {/* כפתורים */}
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          {user?.role === 'admin' && (
-            <button 
-              type="button" 
-              className="btn-secondary" 
-              onClick={handleResetToDefaults}
-              style={{ 
-                backgroundColor: 'rgba(239, 68, 68, 0.08)', 
-                color: '#fca5a5', 
-                borderColor: 'rgba(239, 68, 68, 0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '0.5rem 0.85rem',
-                fontSize: '0.9rem',
-                borderRadius: 'var(--radius-md)'
-              }}
-            >
-              <RotateCcw size={16} />
-              <span>אתחל חניכי ברירת מחדל</span>
-            </button>
-          )}
-
           <button
             type="button"
             className="btn-secondary"

@@ -15,7 +15,7 @@ There are no unit/component tests. Verify UI changes in the browser preview.
 
 ## ⚠️ Local dev talks to production
 
-`.env.local` points at the real Firebase project `tzafit-presence`. `npm run dev` reads and writes **live data** used by counselors. Don't test destructive flows (reset roster, delete students/users, start emergency, rename group) locally unless the user OKs it. There is no staging project.
+`.env.local` points at the real Firebase project `tzafit-presence`. `npm run dev` reads and writes **live data** used by counselors. Don't test destructive flows (delete students/users, start emergency, rename group) locally unless the user OKs it. There is no staging project.
 
 Without `.env.local`, `storage.js` falls back to localStorage, but `Login.jsx` shows only a "not configured" notice — there's no demo login button. Demo mode only works if `sessionStorage.tzafit_demo_user` is already set.
 
@@ -45,7 +45,7 @@ Push to `main` → `.github/workflows/deploy.yml` builds and deploys **Hosting o
 
 - **Multi-writer docs: write single fields, never the whole doc.** Attendance uses `setDoc(..., {merge: true})` with one student; emergency marks use `updateEmergencyRecords` (`updateDoc` on `records.<id>`). `saveEmergencyState` (full `setDoc`) is only for start/end of an emergency — don't use it for per-student marks, or concurrent counselors overwrite each other.
 - `saveStudents` rewrites the entire collection (sets every doc, deletes missing ones). Fine for 133 rows; don't copy it for per-item edits.
-- **No cloud auto-seeding.** An empty `students` or `history` collection stays empty (a new school year starts that way). The built-in roster (`MOCK_STUDENTS`) is only written by the admin "reset to defaults" button, and fake random history only exists in localStorage demo mode. Don't reintroduce seeding on empty snapshots — it undoes deliberate deletions and writes fake attendance to production.
+- **No cloud auto-seeding.** An empty `students` or `history` collection stays empty (a new school year starts that way). The built-in roster (`MOCK_STUDENTS`, last year's students) and fake random history only exist in localStorage demo mode — the "reset to defaults" button was removed on purpose so nobody restores last year's roster into production. Don't reintroduce seeding on empty snapshots — it undoes deliberate deletions and writes fake attendance to production.
 - localStorage keys are versioned (`tzafit_students_v8`, `tzafit_history_v7`, …). Bump the version when the stored shape changes.
 - `react-hooks` lint rules are strict (no set-state-in-effect). The codebase uses the "adjust state during render" pattern instead (see `dormSyncKey` in RollCall, `visitedTabs` in App). Match it.
 

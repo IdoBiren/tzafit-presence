@@ -13,7 +13,7 @@ Built with React 19 + Vite, backed by Firebase (Firestore + Google Auth), with a
 - **Emergency mode** — an admin activates it with a reason; every registered student starts as unverified, regardless of the last round — a student wrongly marked at home, or never marked, still has to be accounted for. All screens update live as students are confirmed safe, with a two-column verified/unverified split and a progress bar.
 - **Dashboard & reports** — live counters, a clickable pie chart per dorm group (click a slice to list those students by name), a 7-round attendance trend, a chronic-absence table (`<92%`) with tap-to-call parent links, and CSV export of the full history with a UTF-8 BOM so Hebrew opens correctly in Excel. Live stats cover the last 30 days (see Known quirks).
 - **Staff & permissions** — Google sign-in, one-time display-name setup, and an admin screen for assigning each new counselor a role and a dorm group. New counselors wait on a pending screen until an admin assigns them.
-- **Student management** — add, edit, delete students (name, dorm, room, parent name/phone, notes), or reset the roster to the built-in default list.
+- **Student management** — add, edit, delete students (name, dorm, room, parent name/phone, notes), and export the full list (including parent details) to CSV.
 - **Group renaming** — admins can rename any of the four dorm groups; students and staff assigned to it are updated in one atomic batch.
 
 ---
@@ -134,7 +134,7 @@ The emergency doc being a **single document** is what makes the shared live chec
 | `RollCall.jsx` | The main screen: date/session picker, filters, student cards, auto-save |
 | `Dashboard.jsx` | Stats, pie charts per group, trend chart, chronic absences, CSV export |
 | `EmergencyMode.jsx` | Emergency activation form and the live safe/unverified checklist |
-| `StudentManager.jsx` | Student CRUD and roster reset |
+| `StudentManager.jsx` | Student CRUD and student-list CSV export |
 | `StaffManager.jsx` | Admin-only: assign roles and groups, delete users |
 | `Login.jsx` | Google sign-in |
 | `NameSetup.jsx` | One-time display-name prompt |

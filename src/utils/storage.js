@@ -281,7 +281,6 @@ export const subscribeToStudents = (onUpdate) => {
     return onSnapshot(studentsCol, async (snapshot) => {
       // אין זריעה אוטומטית: רשימה ריקה היא מצב לגיטימי (למשל תחילת שנתון),
       // וזריעה הייתה מחזירה מיד את רשימת ברירת המחדל אחרי מחיקה מכוונת.
-      // לשחזור הרשימה יש את כפתור "אתחל חניכי ברירת מחדל" במסך ניהול החניכים.
       const studentsList = snapshot.docs.map(d => d.data());
       // מיון חניכים לפי מזהה
       studentsList.sort((a, b) => parseInt(a.id) - parseInt(b.id));
@@ -705,19 +704,6 @@ export const subscribeToUserProfile = (uid, onUpdate) => {
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
-  }
-};
-
-// 12. איפוס חניכים לרשימת ברירת המחדל
-export const resetStudentsToDefault = async () => {
-  await saveStudents(MOCK_STUDENTS);
-  // מאפסים גם את שמות הקבוצות - אחרת "איפוס לברירת מחדל" משאיר את
-  // settings/groups עם שם ששונה בעבר, בזמן שהחניכים כבר חזרו לשם המקורי.
-  if (isFirebaseConfigured) {
-    await setDoc(doc(db, "settings", "groups"), { names: DEFAULT_GROUP_NAMES });
-  } else {
-    localStorage.setItem("tzafit_groups_v1", JSON.stringify(DEFAULT_GROUP_NAMES));
-    window.dispatchEvent(new Event('storage'));
   }
 };
 

@@ -34,7 +34,6 @@ import {
   getOrCreateUserRole,
   updateUserProfile,
   subscribeToUserProfile,
-  resetStudentsToDefault,
   subscribeToGroupNames
 } from './utils/storage';
 import { auth, isFirebaseConfigured } from './utils/firebase';
@@ -217,18 +216,6 @@ function AppContent() {
       }
     } catch {
       alert("שגיאה בסנכרון השינויים. אנא בדוק את החיבור לרשת ונסה שוב.");
-    } finally {
-      setDbOperating(false);
-    }
-  };
-
-  // אתחול החניכים לרשימת ברירת המחדל
-  const handleResetStudents = async () => {
-    setDbOperating(true);
-    try {
-      await resetStudentsToDefault();
-    } catch {
-      alert("שגיאה באתחול החניכים בענן.");
     } finally {
       setDbOperating(false);
     }
@@ -540,7 +527,6 @@ function AppContent() {
               <StudentManager
                 students={students}
                 onSaveStudents={handleSaveStudents}
-                onResetStudents={handleResetStudents}
                 user={user}
                 groupNames={groupNames}
               />
