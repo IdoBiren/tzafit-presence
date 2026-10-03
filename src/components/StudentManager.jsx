@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UserPlus, Edit2, Trash2, X, Save, UserCheck, RotateCcw } from 'lucide-react';
+import { UserPlus, Edit2, Trash2, X, Save, UserCheck, RotateCcw, Download } from 'lucide-react';
 import { getDormColor } from '../utils/dormColors';
 
 const StudentManager = ({ students, onSaveStudents, onResetStudents, user, groupNames }) => {
@@ -88,7 +88,9 @@ const StudentManager = ({ students, onSaveStudents, onResetStudents, user, group
       });
     } else {
       // הוספה - יצירת מזהה ייחודי חדש
-      const newId = (Math.max(...students.map(s => parseInt(s.id) || 0)) + 1).toString();
+      // 0 כבסיס: Math.max על רשימה ריקה מחזיר -Infinity, והחניך הראשון היה
+      // מקבל את המזהה "-Infinity"
+      const newId = (Math.max(0, ...students.map(s => parseInt(s.id) || 0)) + 1).toString();
       const newStudent = {
         id: newId,
         name: formName.trim(),
@@ -103,6 +105,26 @@ const StudentManager = ({ students, onSaveStudents, onResetStudents, user, group
 
     onSaveStudents(updatedList);
     setIsModalOpen(false);
+  };
+
+  // ייצוא רשימת החניכים המלאה (כולל פרטי הורים והערות) ל-CSV - גיבוי לפני
+  // מחיקה או החלפת שנתון. ייצוא הנוכחות בלוח הבקרה אינו כולל את השדות האלה.
+  const handleExportStudentsCSV = () => {
+    const escape = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+    const headers = ['מזהה', 'שם מלא', 'קבוצה', 'חדר', 'שם הורה', 'טלפון הורה', 'הערות'];
+    const rows = students.map(s =>
+      [s.id, s.name, s.dorm, s.room, s.parentName, s.parentPhone, s.notes].map(escape).join(',')
+    );
+    const csvContent = '﻿' + [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `tzafit_students_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleResetToDefaults = () => {
@@ -168,6 +190,17 @@ const StudentManager = ({ students, onSaveStudents, onResetStudents, user, group
               <span>אתחל חניכי ברירת מחדל</span>
             </button>
           )}
+
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={handleExportStudentsCSV}
+            disabled={students.length === 0}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '0.5rem 0.85rem', fontSize: '0.9rem', borderRadius: 'var(--radius-md)' }}
+          >
+            <Download size={16} />
+            <span>ייצוא רשימת חניכים</span>
+          </button>
 
           <button type="button" className="btn-primary" onClick={handleOpenAddModal}>
             <UserPlus size={18} />

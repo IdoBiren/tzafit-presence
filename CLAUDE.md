@@ -45,7 +45,7 @@ Push to `main` → `.github/workflows/deploy.yml` builds and deploys **Hosting o
 
 - **Multi-writer docs: write single fields, never the whole doc.** Attendance uses `setDoc(..., {merge: true})` with one student; emergency marks use `updateEmergencyRecords` (`updateDoc` on `records.<id>`). `saveEmergencyState` (full `setDoc`) is only for start/end of an emergency — don't use it for per-student marks, or concurrent counselors overwrite each other.
 - `saveStudents` rewrites the entire collection (sets every doc, deletes missing ones). Fine for 133 rows; don't copy it for per-item edits.
-- Seeding: if `students` comes back empty, or the whole `history` collection is empty (an empty 30-day window alone doesn't count), the client auto-seeds the built-in 133-student roster and 7 days of **random** fake history. A rules/permission error that yields an empty snapshot won't trigger this (the error callback fires instead), but be careful with anything that empties those collections.
+- **No cloud auto-seeding.** An empty `students` or `history` collection stays empty (a new school year starts that way). The built-in roster (`MOCK_STUDENTS`) is only written by the admin "reset to defaults" button, and fake random history only exists in localStorage demo mode. Don't reintroduce seeding on empty snapshots — it undoes deliberate deletions and writes fake attendance to production.
 - localStorage keys are versioned (`tzafit_students_v8`, `tzafit_history_v7`, …). Bump the version when the stored shape changes.
 - `react-hooks` lint rules are strict (no set-state-in-effect). The codebase uses the "adjust state during render" pattern instead (see `dormSyncKey` in RollCall, `visitedTabs` in App). Match it.
 

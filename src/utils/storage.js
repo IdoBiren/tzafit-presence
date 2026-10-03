@@ -12,7 +12,6 @@ import {
   deleteDoc,
   query,
   where,
-  limit,
   writeBatch
 } from 'firebase/firestore';
 
@@ -232,34 +231,6 @@ const generateMockHistory = () => {
   return history;
 };
 
-// ----------------------------------------------------
-// פונקציות עזר לייבוא נתונים ראשוני אוטומטי לענן (Auto Seeding)
-// ----------------------------------------------------
-
-const seedCloudStudents = async () => {
-  console.log("מבצע הזנת חניכים ראשונית ל-Firestore...");
-  const batch = writeBatch(db);
-  MOCK_STUDENTS.forEach(student => {
-    const docRef = doc(db, "students", student.id);
-    batch.set(docRef, student);
-  });
-  await batch.commit();
-  console.log("הזנת חניכים לענן הושלמה בהצלחה!");
-};
-
-const seedCloudHistory = async () => {
-  console.log("מבצע הזנת היסטוריית נוכחות ראשונית ל-Firestore...");
-  const mockHistory = generateMockHistory();
-  const batch = writeBatch(db);
-  mockHistory.forEach(record => {
-    const docId = `${record.date}_${record.session}`;
-    const docRef = doc(db, "history", docId);
-    batch.set(docRef, record);
-  });
-  await batch.commit();
-  console.log("הזנת היסטוריה לענן הושלמה בהצלחה!");
-};
-
 const initializeLocalStorage = () => {
   if (!localStorage.getItem("tzafit_students_v8")) {
     localStorage.setItem("tzafit_students_v8", JSON.stringify(MOCK_STUDENTS));
@@ -308,15 +279,13 @@ export const subscribeToStudents = (onUpdate) => {
   if (isFirebaseConfigured) {
     const studentsCol = collection(db, "students");
     return onSnapshot(studentsCol, async (snapshot) => {
-      if (snapshot.empty) {
-        // אם אין חניכים בענן, נבצע Seeding אוטומטי מהמערכת
-        await seedCloudStudents();
-      } else {
-        const studentsList = snapshot.docs.map(d => d.data());
-        // מיון חניכים לפי מזהה
-        studentsList.sort((a, b) => parseInt(a.id) - parseInt(b.id));
-        onUpdate(studentsList);
-      }
+      // אין זריעה אוטומטית: רשימה ריקה היא מצב לגיטימי (למשל תחילת שנתון),
+      // וזריעה הייתה מחזירה מיד את רשימת ברירת המחדל אחרי מחיקה מכוונת.
+      // לשחזור הרשימה יש את כפתור "אתחל חניכי ברירת מחדל" במסך ניהול החניכים.
+      const studentsList = snapshot.docs.map(d => d.data());
+      // מיון חניכים לפי מזהה
+      studentsList.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+      onUpdate(studentsList);
     }, (error) => {
       console.error("שגיאה בהאזנה לחניכים בענן:", error);
     });
@@ -347,19 +316,10 @@ export const subscribeToHistory = (onUpdate) => {
   if (isFirebaseConfigured) {
     const historyQuery = query(collection(db, "history"), where("date", ">=", getHistoryCutoffDate()));
     return onSnapshot(historyQuery, async (snapshot) => {
-      if (snapshot.empty) {
-        // חלון ריק (למשל אחרי חופשה) אינו אומר שהאוסף ריק. זורעים נתוני דמה
-        // רק אם אין אף מסמך בכלל - אחרת היינו כותבים נוכחות אקראית לפרודקשן.
-        const anyHistory = await getDocs(query(collection(db, "history"), limit(1)));
-        if (anyHistory.empty) {
-          await seedCloudHistory();
-        } else {
-          onUpdate([]);
-        }
-      } else {
-        const historyList = snapshot.docs.map(d => d.data());
-        onUpdate(sortHistoryChronologically(historyList));
-      }
+      // אין זריעה אוטומטית של היסטוריה: היא הייתה כותבת נוכחות אקראית
+      // ומזויפת לפרודקשן בכל פעם שהאוסף מתרוקן.
+      const historyList = snapshot.docs.map(d => d.data());
+      onUpdate(sortHistoryChronologically(historyList));
     }, (error) => {
       console.error("שגיאה בהאזנה להיסטוריה בענן:", error);
     });
