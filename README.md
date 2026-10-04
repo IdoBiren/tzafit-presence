@@ -11,7 +11,7 @@ Built with React 19 + Vite, backed by Firebase (Firestore + Google Auth), with a
 - **Roll call** — four daily rounds (`פתיחת יום`, `ארוחת ערב`, `כיבוי אורות`, `לילה`), three statuses per student (`נוכח` / `חסר` / `בבית`). Tap-to-clear on the active status. Sorting defaults to unmarked-first so nobody gets skipped.
 - **Real-time auto-save** — each tap writes only that one student's field (`setDoc` with `merge: true`), so several counselors can mark the same round at once without overwriting each other.
 - **Emergency mode** — an admin activates it with a reason; every registered student starts as unverified, regardless of the last round — a student wrongly marked at home, or never marked, still has to be accounted for. All screens update live as students are confirmed safe, with a two-column verified/unverified split and a progress bar.
-- **Dashboard & reports** — live counters, a clickable pie chart per dorm group (click a slice to list those students by name), a 7-round attendance trend, a chronic-absence table (`<92%`) with tap-to-call parent links, and CSV export of the full history with a UTF-8 BOM so Hebrew opens correctly in Excel. Live stats cover the last 30 days (see Known quirks).
+- **Management dashboard** — a day / week / month switch over four KPIs (attendance rate, absences, required rounds completed, repeated absences); a **round-completion** table (today: groups × rounds, tap a cell to open that exact round; week/month: groups × active days heat map); a daily attendance trend per group; a repeated-absences list with tap-to-call; and CSV export of the full history with a UTF-8 BOM so Hebrew opens correctly in Excel. Month = last 30 days (see Known quirks).
 - **Staff & permissions** — Google sign-in, one-time display-name setup, and an admin screen for assigning each new counselor a role and a dorm group. New counselors wait on a pending screen until an admin assigns them.
 - **Student management** — add, edit, delete students (name, dorm, room, parent name/phone, notes), and export the full list (including parent details) to CSV.
 - **Group renaming** — admins can rename any of the four dorm groups; students and staff assigned to it are updated in one atomic batch.
@@ -25,7 +25,7 @@ Built with React 19 + Vite, backed by Firebase (Firestore + Google Auth), with a
 | Framework | React 19 (no router — a single tab-switch in `App.jsx`) |
 | Build | Vite 8 |
 | Backend | Firebase — Firestore (realtime listeners) + Auth (Google popup) |
-| Charts | recharts (pie charts) + a hand-rolled CSS bar chart |
+| Charts | recharts (dashboard trend line chart) |
 | Icons | lucide-react |
 | Styling | `index.css` (CSS custom properties + classes), plus inline style objects per component |
 
@@ -132,7 +132,7 @@ The emergency doc being a **single document** is what makes the shared live chec
 | `App.jsx` | State, realtime subscriptions, auth gate, tab switching, nav bar |
 | `Header.jsx` | Title bar, user avatar, role badge, logout |
 | `RollCall.jsx` | The main screen: date/session picker, filters, student cards, auto-save |
-| `Dashboard.jsx` | Stats, pie charts per group, trend chart, chronic absences, CSV export |
+| `Dashboard.jsx` | Period switch, KPIs, CSV export; sections in `components/dashboard/` (`RoundCompletion`, `AttendanceTrend`, `RepeatedAbsences`); all math in `utils/attendanceStats.js` |
 | `EmergencyMode.jsx` | Emergency activation form and the live safe/unverified checklist |
 | `StudentManager.jsx` | Student CRUD and student-list CSV export |
 | `StaffManager.jsx` | Admin-only: assign roles and groups, delete users |
@@ -164,8 +164,8 @@ Note that a counselor's assigned group only sets the *default* filter in the UI 
 
 Worth knowing before changing behavior:
 
-- **Only the last 30 days of history are loaded live** (`HISTORY_WINDOW_DAYS` in `storage.js`), to stay inside the free Firestore plan's 50K reads/day. The attendance average and chronic-absence table reflect that window; CSV export still fetches everything. The roll-call date picker doesn't go further back.
-- **`history[0]` is "the current round."** History is sorted by date + session order (not by write time), and the dashboard treats the first entry as current state.
+- **Only the last 30 days of history are loaded live** (`HISTORY_WINDOW_DAYS` in `storage.js`), to stay inside the free Firestore plan's 50K reads/day. The dashboard's "month" is that window; CSV export still fetches everything. The roll-call date picker doesn't go further back.
+- **Round completion rules** live in `utils/attendanceStats.js`: required rounds are morning / afternoon / evening (night is optional), and the regular active days are Sun, Mon, Wed. Any other day with marks counts as a special active day; a regular day with no marks at all shows as "maybe closed" rather than as missed rounds. A round is complete when every student in the group who was enrolled that day (`createdAt`) has a status.
 - **`setActiveTab` is called during render** in `App.jsx`'s tab-permission guard — intentional "adjust state during render" pattern, not an effect.
 - The seeded demo history is generated with `Math.random()`, so a fresh cloud project starts with plausible-looking but entirely fictional attendance data.
 - Without Firebase config there's no way to sign in from the login screen; the localStorage fallback only works with a demo user already in `sessionStorage`.

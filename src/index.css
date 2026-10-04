@@ -1478,3 +1478,209 @@ a {
     font-size: 0.85rem !important;
   }
 }
+
+/* ===================== לוח בקרה להנהלה ===================== */
+
+.dash-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.dash-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.dash-period .toggle-btn {
+  min-height: 40px;
+  min-width: 64px;
+}
+
+.dash-muted {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0 0 0.75rem;
+  line-height: 1.5;
+}
+
+.dash-section-title {
+  font-weight: 800;
+  font-size: 1.15rem;
+  color: var(--primary);
+  margin: 0 0 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dash-of {
+  font-size: 1rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.dash-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+/* --- השלמת סבבים --- */
+
+/* רק הטבלה נגללת לרוחב בטלפון, לא הדף כולו */
+.rc-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 -0.25rem;
+  padding: 0 0.25rem 0.25rem;
+}
+
+.rc-table {
+  border-collapse: separate;
+  border-spacing: 6px;
+  width: 100%;
+}
+
+.rc-table th {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.rc-table th[scope="row"] {
+  text-align: right;
+  color: var(--primary);
+  font-size: 0.85rem;
+  padding-left: 0.5rem;
+  position: sticky;
+  right: 0;
+  background: white;
+  z-index: 1;
+}
+
+.rc-cell {
+  width: 100%;
+  min-width: 92px;
+  min-height: 52px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0.35rem 0.5rem;
+}
+
+.rc-cell:disabled { cursor: default; }
+.rc-cell-state { font-size: 0.8rem; font-weight: 800; }
+.rc-cell-count { font-size: 0.75rem; font-weight: 600; opacity: 0.85; }
+
+.rc-complete { background: var(--present-bg); color: var(--present); border-color: var(--present-border); }
+.rc-partial { background: var(--leave-bg); color: #b45309; border-color: #fcd34d; }
+.rc-not-started { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
+.rc-missed { background: var(--absent-bg); color: var(--absent); border-color: var(--absent-border); }
+.rc-maybe-closed { background: #f8fafc; color: #a16207; border: 1px dashed #d6d3d1; }
+.rc-empty-group { background: transparent; color: #cbd5e1; border-color: #f1f5f9; }
+
+.rc-heatmap th .rc-day-letter { display: block; font-size: 0.75rem; }
+.rc-heatmap th .rc-day-date { display: block; font-size: 0.65rem; font-weight: 600; }
+.rc-heatmap th.rc-today { color: var(--accent); }
+
+.rc-dot {
+  width: 44px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+}
+
+.rc-dot.rc-selected { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.rc-detail {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-app);
+  border: 1px solid var(--border-color);
+  font-size: 0.9rem;
+  color: var(--primary);
+}
+
+.rc-detail-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+/* --- היעדרויות חוזרות --- */
+
+.ra-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.ra-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-app);
+}
+
+.ra-main { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.ra-name { font-weight: 800; color: var(--primary); font-size: 0.92rem; }
+.ra-meta { font-size: 0.75rem; color: var(--text-muted); }
+.ra-side { display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; }
+.ra-count { font-weight: 700; font-size: 0.72rem; padding: 0.2rem 0.5rem; border-radius: 8px; white-space: nowrap; }
+
+.ra-call {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+@media (max-width: 640px) {
+  /* ארבעת המספרים ב-2x2 - בטור אחד הם תופסים מסך שלם לפני שמגיעים לטבלה.
+     !important כי כלל המובייל הישן של .stat-card (שנבנה ל-5 כרטיסים)
+     מותח את הכרטיס האחרון לרוחב מלא עם !important */
+  .stats-grid.dash-kpis { margin-bottom: 0 !important; gap: 0.6rem !important; }
+  .dash-kpis .stat-card:last-child { grid-column: auto !important; }
+  .dash-kpis .stat-icon { display: none !important; }
+  .dash-kpis .stat-info h3 { font-size: 0.75rem !important; }
+  .dash-kpis .stat-number { font-size: 1.5rem !important; }
+  .rc-cell { min-width: 76px; min-height: 48px; padding: 0.3rem; }
+  .dash-header-actions { width: 100%; }
+  .dash-period { flex: 1; }
+  .dash-period .toggle-btn { flex: 1; }
+  .ra-item { align-items: flex-start; }
+  .ra-side { flex-direction: column-reverse; align-items: flex-end; gap: 0.4rem; }
+}

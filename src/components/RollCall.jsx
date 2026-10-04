@@ -3,13 +3,14 @@ import { Check, X, Home, Search, User, Filter } from 'lucide-react';
 import { useToast } from './ToastProvider';
 import { getDormColor } from '../utils/dormColors';
 import { getHistoryCutoffDate } from '../utils/storage';
+import { todayLocalISO } from '../utils/attendanceStats';
 import { describeSaveError, withPendingTimeout } from '../utils/saveErrors';
 
-const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilter, clearInitialDormFilter, user, groupNames }) => {
+const RollCall = ({ students, history, onUpdateSingleAttendance, initialTarget, clearInitialTarget, user, groupNames }) => {
   const { showToast } = useToast();
   const [selectedDorm, setSelectedDorm] = useState(() => {
-    if (initialDormFilter) {
-      return initialDormFilter;
+    if (initialTarget?.dorm) {
+      return initialTarget.dorm;
     }
     if (user && user.group && user.group !== 'כללי') {
       return user.group;
@@ -18,8 +19,9 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilt
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('unmarked');
-  const [session, setSession] = useState('evening'); // ברירת מחדל רישום ערב
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [session, setSession] = useState(initialTarget?.session || 'evening'); // ברירת מחדל רישום ערב
+  // תאריך מקומי ולא toISOString(): ב-UTC, בין חצות ל-3:00 יוצא התאריך של אתמול
+  const [date, setDate] = useState(initialTarget?.date || todayLocalISO());
   // שם המדריך נגזר ישירות מהמשתמש המחובר - אין קלט ידני לעריכתו (הוסר בעבר),
   // ולכן אין צורך במצב מקומי או ב-effect בשביל זה, רק בערך נגזר.
   const markedBy = user?.displayName || 'מדריך תורן';
@@ -29,17 +31,15 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilt
   // הקודמת הסתיימה, רק תוצאת הכתיבה האחרונה קובעת את התג ואת הסימון
   const latestWriteRef = useRef({});
 
-  // סנכרון פילטר בית מהדאשבורד, או בחירת קבוצת המדריך כברירת מחדל.
-  // מתעדכן בזמן רינדור (ולא ב-effect) כשאחד הערכים משתנה, כדי ש-selectedDorm
-  // יתעדכן באותו רינדור בלי הבזק של הערך הקודם - ראו:
+  // בחירת קבוצת המדריך כברירת מחדל, ומעבר לתצוגת הכל אם הקבוצה שנבחרה
+  // שונה שם. מתעדכן בזמן רינדור (ולא ב-effect) כשאחד הערכים משתנה, כדי
+  // ש-selectedDorm יתעדכן באותו רינדור בלי הבזק של הערך הקודם - ראו:
   // https://react.dev/reference/react/useState#storing-information-from-previous-renders
-  const dormSyncKey = `${initialDormFilter || ''}|${user?.group || ''}|${(groupNames || []).join(',')}`;
+  const dormSyncKey = `${user?.group || ''}|${(groupNames || []).join(',')}`;
   const [appliedDormSyncKey, setAppliedDormSyncKey] = useState(dormSyncKey);
   if (dormSyncKey !== appliedDormSyncKey) {
     setAppliedDormSyncKey(dormSyncKey);
-    if (initialDormFilter) {
-      setSelectedDorm(initialDormFilter);
-    } else if (user && user.group && user.group !== 'כללי') {
+    if (user && user.group && user.group !== 'כללי') {
       setSelectedDorm(user.group);
     } else if (selectedDorm !== 'הכל' && groupNames && groupNames.length && !groupNames.includes(selectedDorm)) {
       // הקבוצה שנבחרה כבר לא קיימת (שונה שם שלה) - חוזרים לתצוגת הכל
@@ -48,13 +48,23 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialDormFilt
     }
   }
 
-  // הודעה לדאשבורד שהפילטר שביקש נצרך - קריאה להורה, לא state מקומי, ולכן
+  // מעבר מלוח הבקרה לסבב מסוים: קבוצה, תאריך וסבב. נבדק לפי זהות האובייקט,
+  // כך שכשההורה מנקה את היעד (null) הבחירה של המשתמש לא נדרסת.
+  const [appliedTarget, setAppliedTarget] = useState(initialTarget);
+  if (initialTarget && initialTarget !== appliedTarget) {
+    setAppliedTarget(initialTarget);
+    if (initialTarget.dorm) setSelectedDorm(initialTarget.dorm);
+    if (initialTarget.date) setDate(initialTarget.date);
+    if (initialTarget.session) setSession(initialTarget.session);
+  }
+
+  // הודעה ללוח הבקרה שהיעד נצרך - קריאה להורה, לא state מקומי, ולכן
   // חייבת להישאר ב-effect אמיתי.
   useEffect(() => {
-    if (initialDormFilter) {
-      clearInitialDormFilter();
+    if (initialTarget) {
+      clearInitialTarget();
     }
-  }, [initialDormFilter, clearInitialDormFilter]);
+  }, [initialTarget, clearInitialTarget]);
 
   // טעינת רשומת נוכחות קיימת לתאריך ולסשן הנבחרים, או אתחול ברירת מחדל.
   // זו טעינת נתונים חיצוניים (רשומה שמורה) לתוך עותק מקומי הניתן לעריכה -

@@ -1,208 +1,49 @@
 import { useState } from 'react';
-import { 
-  Users, 
-  UserCheck, 
-  UserX,
-  Home,
-  ChevronLeft,
-  CalendarDays, 
-  History, 
-  BarChart3, 
-  Download, 
-  UserMinus, 
-  Phone, 
-  CheckCircle, 
-  Award,
-  X
-} from 'lucide-react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { fetchAllHistory, HISTORY_WINDOW_DAYS } from '../utils/storage';
+import { Download, CalendarDays, History, Percent, UserX, ClipboardCheck, UserMinus } from 'lucide-react';
+import { fetchAllHistory } from '../utils/storage';
+import {
+  SESSION_LABELS,
+  todayLocalISO,
+  formatShortDate,
+  computeKpis,
+  computeRoundCompletion,
+  computeDailyTrend,
+  computeRepeatedAbsences
+} from '../utils/attendanceStats';
+import RoundCompletion from './dashboard/RoundCompletion';
+import AttendanceTrend from './dashboard/AttendanceTrend';
+import RepeatedAbsences from './dashboard/RepeatedAbsences';
 
-const Dashboard = ({ students, history, onNavigateToTab, setDormFilter, groupNames }) => {
-  const [modalData, setModalData] = useState(null); // { groupName, statusName, color }
+const PERIODS = [
+  { id: 'day', label: 'היום' },
+  { id: 'week', label: 'שבוע' },
+  { id: 'month', label: 'חודש' }
+];
+
+const PERIOD_SUFFIX = { day: 'היום', week: '7 ימים אחרונים', month: '30 ימים אחרונים' };
+
+// לוח בקרה להנהלה: השלמת סבבים, היעדרויות חוזרות ומגמות, לפי תקופה.
+// כל החישובים ב-utils/attendanceStats.js, על ההיסטוריה של 30 הימים שכבר
+// נטענת - בלי קריאות נוספות מ-Firebase.
+const Dashboard = ({ students, history, onOpenRound, groupNames }) => {
+  const [period, setPeriod] = useState('day');
   const [exporting, setExporting] = useState(false);
 
-  // קבלת הרשומה האחרונה ביותר לחישוב נוכחות עדכני
-  const latestRecord = history && history.length > 0 ? history[0] : null;
-  
-  // 1. חישוב מונים כלליים לשגרה הנוכחית
-  const totalStudents = students.length;
-  let presentCount = 0;
-  let absentCount = 0;
-  let leaveCount = 0;
-  let unmarkedCount = 0;
+  const today = todayLocalISO();
+  const args = { students, history, groupNames, period, today };
+  const kpis = computeKpis(args);
+  const completion = computeRoundCompletion(args);
+  const trend = period === 'day' ? [] : computeDailyTrend(args);
+  const absences = computeRepeatedAbsences(args);
 
-  if (latestRecord) {
-    students.forEach(student => {
-      const status = latestRecord.records[student.id];
-      if (status === 'present') presentCount++;
-      else if (status === 'absent') absentCount++;
-      else if (status === 'leave') leaveCount++;
-      else unmarkedCount++;
-    });
-  } else {
-    // לפני שנרשם משהו אף אחד לא "חסר" - פשוט טרם נבדק
-    unmarkedCount = totalStudents;
-  }
+  // מתי נרשם משהו לאחרונה - כדי שיהיה ברור עד מתי הנתונים מעודכנים
+  const lastUpdate = (history || []).reduce((max, h) => (h.timestamp && h.timestamp > max ? h.timestamp : max), '');
 
-  // 2. חישוב ממוצע נוכחות פנימייתי כולל
-  const calculateOverallStats = () => {
-    if (!history || history.length === 0) return { rate: 0, totalChecks: 0 };
-    
-    let totalPresent = 0;
-    let totalAbsent = 0;
-
-    history.forEach(session => {
-      Object.values(session.records).forEach(status => {
-        if (status === 'present') totalPresent++;
-        else if (status === 'absent') totalAbsent++;
-      });
-    });
-
-    const total = totalPresent + totalAbsent;
-    const rate = total > 0 ? Math.round((totalPresent / total) * 100) : 100;
-    return { rate, totalChecks: history.length };
-  };
-
-  const overall = calculateOverallStats();
-
-  // 3. חלוקת קבוצות וחישוב נתונים לכל קבוצה
-  const groups = groupNames || [];
-  
-  const groupData = groups.map(groupName => {
-    const groupStudents = students.filter(s => s.dorm === groupName);
-    const total = groupStudents.length;
-    let present = 0;
-    let absent = 0;
-    let leave = 0;
-    let unmarked = 0;
-
-    if (latestRecord) {
-      groupStudents.forEach(s => {
-        const status = latestRecord.records[s.id];
-        if (status === 'present') present++;
-        else if (status === 'absent') absent++;
-        else if (status === 'leave') leave++;
-        else unmarked++;
-      });
-    } else {
-      unmarked = total;
-    }
-
-    const presenceRate = total > 0 ? Math.round((present / total) * 100) : 0;
-
-    const pieData = [
-      { name: 'נוכח', value: present, color: '#10b981' },
-      { name: 'חסר', value: absent, color: '#ef4444' },
-      { name: 'בבית', value: leave, color: '#f59e0b' },
-      { name: 'טרם סומן', value: unmarked, color: '#94a3b8' }
-    ].filter(item => item.value > 0);
-
-    return {
-      name: groupName,
-      total,
-      present,
-      absent,
-      leave,
-      unmarked,
-      presenceRate,
-      pieData
-    };
-  });
-
-  const handleDormClick = (groupName) => {
-    setDormFilter(groupName);
-    onNavigateToTab('rollcall');
-  };
-
-  const getSessionName = (session) => {
-    if (session === 'morning') return 'רישום פתיחת יום';
-    if (session === 'afternoon') return 'רישום ארוחת ערב';
-    if (session === 'evening') return 'רישום כיבוי אורות';
-    if (session === 'night') return 'רישום לילה';
-    return 'רישום נוכחות';
-  };
-
+  const getSessionName = (session) => `רישום ${SESSION_LABELS[session] || 'נוכחות'}`;
   const formatDate = (dateStr) => {
     const parts = dateStr.split('-');
-    if (parts.length === 3) {
-      return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    }
-    return dateStr;
+    return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateStr;
   };
-
-  // 4. הכנת נתונים לגרף מגמות נוכחות - 7 הסבבים האחרונים
-  const getChartData = () => {
-    if (!history || history.length === 0) return [];
-    
-    // קבלת 7 הרשומות האחרונות, והפיכת הסדר כדי שיוצגו משמאל לימין (כרונולוגית)
-    const recentSessions = [...history].slice(0, 7).reverse();
-
-    return recentSessions.map(session => {
-      let present = 0;
-      let absent = 0;
-      
-      Object.values(session.records).forEach(status => {
-        if (status === 'present') present++;
-        else if (status === 'absent') absent++;
-      });
-
-      const total = present + absent;
-      const rate = total > 0 ? Math.round((present / total) * 100) : 100;
-
-      const parts = session.date.split('-');
-      const shortDate = parts.length === 3 ? `${parts[2]}/${parts[1]}` : session.date;
-      let sessionLabel = 'סבב';
-      if (session.session === 'morning') sessionLabel = 'פתיחת יום';
-      else if (session.session === 'afternoon') sessionLabel = 'ארוחת ערב';
-      else if (session.session === 'evening') sessionLabel = 'כיבוי אורות';
-      else if (session.session === 'night') sessionLabel = 'לילה';
-
-      return {
-        label: `${shortDate} (${sessionLabel})`,
-        rate
-      };
-    });
-  };
-
-  const chartData = getChartData();
-
-  // 5. איתור חניכים עם נוכחות נמוכה (מתחת ל-92%)
-  const getChronicAbsences = () => {
-    if (!history || history.length === 0) return [];
-
-    const studentStats = students.map(student => {
-      let presentCount = 0;
-      let absentCount = 0;
-      let leaveCount = 0;
-
-      history.forEach(session => {
-        const status = session.records[student.id];
-        if (status) {
-          if (status === 'present') presentCount++;
-          else if (status === 'absent') absentCount++;
-          else if (status === 'leave') leaveCount++;
-        }
-      });
-
-      const activeSessions = presentCount + absentCount;
-      const rate = activeSessions > 0 ? Math.round((presentCount / activeSessions) * 100) : 100;
-
-      return {
-        ...student,
-        presentCount,
-        absentCount,
-        leaveCount,
-        rate
-      };
-    });
-
-    return studentStats
-      .filter(s => s.rate < 92 && s.absentCount > 0)
-      .sort((a, b) => a.rate - b.rate);
-  };
-
-  const chronicAbsences = getChronicAbsences();
 
   // 6. ייצוא כל ההיסטוריה לקובץ CSV בעברית
   // ה-prop history מכיל רק את החלון האחרון (HISTORY_WINDOW_DAYS), ולכן הייצוא
@@ -272,481 +113,153 @@ const Dashboard = ({ students, history, onNavigateToTab, setDormFilter, groupNam
     document.body.removeChild(link);
   };
 
-  // 7. שליפת חניכים לחלון הצף לפי הקליק בגרף הפאי
-  const getModalStudents = () => {
-    if (!modalData) return [];
-    const groupStudents = students.filter(s => s.dorm === modalData.groupName);
-    
-    return groupStudents.filter(s => {
-      const status = latestRecord ? latestRecord.records[s.id] : null;
-      if (modalData.statusName === 'נוכח') return status === 'present';
-      if (modalData.statusName === 'חסר') return status === 'absent';
-      if (modalData.statusName === 'בבית') return status === 'leave';
-      if (modalData.statusName === 'טרם סומן') return status === null || status === undefined;
-      return false;
-    });
-  };
-
   return (
     <div className="dashboard-wrapper">
-      {/* שורת כותרת דאשבורד מאוחדת */}
-      <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary)' }}>
-          לוח בקרה ודוחות נוכחות
-        </h2>
-        <button 
-          type="button" 
-          className="btn-primary" 
-          onClick={handleExportCSV}
-          disabled={exporting}
-          style={{ padding: '0.5rem 1.25rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          <Download size={16} />
-          <span>{exporting ? 'מכין קובץ...' : 'ייצוא דוחות ל-CSV'}</span>
-        </button>
-      </div>
-
-      {/* כרטיסי מונים עליונים מאוחדים (5 כרטיסים) */}
-      <div className="stats-grid">
-        <div className="card stat-card">
-          <div className="stat-info">
-            <h3>סה"כ חניכים</h3>
-            <div className="stat-number">{totalStudents}</div>
-          </div>
-          <div className="stat-icon">
-            <Users size={22} />
-          </div>
+      {/* כותרת: מתג תקופה + ייצוא */}
+      <div className="dash-header">
+        <div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary)', margin: 0 }}>
+            לוח בקרה ודוחות נוכחות
+          </h2>
+          <p className="dash-muted" style={{ margin: '0.25rem 0 0' }}>
+            {lastUpdate
+              ? `רישום אחרון: ${formatShortDate(lastUpdate.slice(0, 10))} בשעה ${new Date(lastUpdate).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`
+              : 'עוד לא נרשמה נוכחות ב-30 הימים האחרונים'}
+          </p>
         </div>
-
-        <div className="card stat-card">
-          <div className="stat-info">
-            <h3>נוכחים</h3>
-            <div className="stat-number" style={{ color: 'var(--present)' }}>{presentCount}</div>
-          </div>
-          <div className="stat-icon green">
-            <UserCheck size={22} />
-          </div>
-        </div>
-
-        <div className="card stat-card">
-          <div className="stat-info">
-            <h3>לא נוכחים</h3>
-            <div className="stat-number" style={{ color: 'var(--absent)' }}>{absentCount}</div>
-          </div>
-          <div className="stat-icon red">
-            <UserX size={22} />
-          </div>
-        </div>
-
-        <div className="card stat-card">
-          <div className="stat-info">
-            <h3>בבית</h3>
-            <div className="stat-number" style={{ color: 'var(--leave)' }}>{leaveCount}</div>
-          </div>
-          <div className="stat-icon amber">
-            <Home size={22} />
-          </div>
-        </div>
-
-        {/* אותו אפור-סלייט שגרף הפאי משתמש בו לפלח "טרם סומן" */}
-        <div className="card stat-card">
-          <div className="stat-info">
-            <h3>טרם סומנו</h3>
-            <div className="stat-number" style={{ color: '#94a3b8' }}>{unmarkedCount}</div>
-          </div>
-          <div className="stat-icon" style={{ backgroundColor: 'rgba(148, 163, 184, 0.15)', color: '#94a3b8' }}>
-            <UserMinus size={22} />
-          </div>
-        </div>
-
-        <div className="card stat-card">
-          <div className="stat-info">
-            <h3>ממוצע נוכחות ({HISTORY_WINDOW_DAYS} יום)</h3>
-            <div className="stat-number" style={{ color: overall.rate >= 90 ? 'var(--present)' : 'var(--leave)' }}>
-              {overall.rate}%
-            </div>
-          </div>
-          <div className="stat-icon" style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}>
-            <Award size={22} />
-          </div>
-        </div>
-      </div>
-
-      {/* גריד 2 טורים המאחד את לוח הבקרה והדוחות */}
-      <div className="grid-2col">
-        
-        {/* טור ימין: מצב קבוצות + גרף מגמות */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          
-          {/* כרטיס מצב הקבוצות ותרשימי עוגה */}
-          <div className="card">
-            <h3 style={{ fontWeight: 800, fontSize: '1.2rem', color: 'var(--primary)', marginBottom: '1.25rem' }}>
-              מצב הקבוצות בפנימייה (בזמן אמת)
-            </h3>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
-              {groupData.map((group, index) => (
-                <div key={index} className="card" style={{ padding: '1rem', border: '1px solid var(--border-color)', boxShadow: 'none' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                    <h4 style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--primary)' }}>{group.name}</h4>
-                    <button 
-                      className="action-btn" 
-                      onClick={() => handleDormClick(group.name)}
-                      style={{ 
-                        backgroundColor: 'var(--accent-light)', 
-                        color: 'var(--accent)', 
-                        borderColor: 'transparent',
-                        padding: '0.3rem 0.6rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.15rem',
-                        fontSize: '0.75rem'
-                      }}
-                    >
-                      <span>לרישום</span>
-                      <ChevronLeft size={12} />
-                    </button>
-                  </div>
-                  
-                  <div style={{ height: '180px', width: '100%' }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={group.pieData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={45}
-                          outerRadius={70}
-                          paddingAngle={2}
-                          dataKey="value"
-                          onClick={(data) => setModalData({ groupName: group.name, statusName: data.name, color: data.payload.color })}
-                          cursor="pointer"
-                        >
-                          {group.pieData.map((entry, idx) => (
-                            <Cell key={`cell-${idx}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip 
-                          formatter={(value) => [value, 'חניכים']} 
-                          contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'center', marginTop: '0.5rem' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-                      סה"כ: {group.total}
-                    </div>
-                    {group.pieData.map((d, idx) => (
-                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.75rem' }}>
-                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: d.color }}></span>
-                        <span>{d.name} {d.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* כרטיס גרף מגמות נוכחות */}
-          <div className="card">
-            <h3 style={{ fontWeight: 800, fontSize: '1.2rem', color: 'var(--primary)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <BarChart3 size={18} />
-              <span>מגמת נוכחות ב-7 הסבבים האחרונים</span>
-            </h3>
-
-            {chartData.length > 0 ? (
-              <div className="chart-wrapper" style={{ height: '220px' }}>
-                <div className="chart-bar-container" style={{ height: '170px' }}>
-                  {chartData.map((data, index) => (
-                    <div key={index} className="chart-column">
-                      <div 
-                        className="chart-bar-fill" 
-                        style={{ height: `${data.rate * 1.2}px`, width: '32px' }} // התאמה לגובה החדש
-                      >
-                        <div className="chart-bar-value" style={{ fontSize: '0.75rem', top: '-20px' }}>{data.rate}%</div>
-                      </div>
-                      <div className="chart-label" style={{ fontSize: '0.75rem' }}>{data.label}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="empty-state" style={{ height: '180px' }}>
-                <div className="empty-state-icon">
-                  <BarChart3 size={22} />
-                </div>
-                <div className="empty-state-title">אין מספיק נתונים להצגת גרף</div>
-                <p style={{ fontSize: '0.8rem' }}>נתוני הנוכחות יוצגו כאן לאחר ביצוע סבבים במערכת.</p>
-              </div>
-            )}
-          </div>
-
-        </div>
-
-        {/* טור שמאל: פעילויות אחרונות + נוכחות נמוכה */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          
-          {/* כרטיס חניכים עם נוכחות נמוכה */}
-          <div className="card">
-            <h3 style={{ fontWeight: 800, fontSize: '1.15rem', color: '#be123c', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <UserMinus size={18} />
-              <span>נוכחות נמוכה (&lt;92%, {HISTORY_WINDOW_DAYS} יום אחרונים)</span>
-            </h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-              חניכים המופיעים כאן צברו היעדרויות מרובות ומצריכים בירור או פנייה להורים.
-            </p>
-
-            {chronicAbsences.length > 0 ? (
-              <>
-                {/* תצוגת מחשב: טבלה רחבה ומלאה */}
-                <div className="desktop-only" style={{ overflowX: 'auto' }}>
-                  <table className="custom-table" style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>
-                    <thead>
-                      <tr>
-                        <th style={{ padding: '0.5rem' }}>שם</th>
-                        <th style={{ padding: '0.5rem' }}>קבוצה</th>
-                        <th style={{ padding: '0.5rem' }}>חיסור</th>
-                        <th style={{ padding: '0.5rem' }}>נוכחות</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'left' }}>קשר</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {chronicAbsences.map((student) => (
-                        <tr key={student.id}>
-                          <td style={{ fontWeight: 700, color: 'var(--primary)', padding: '0.5rem' }}>{student.name}</td>
-                          <td style={{ padding: '0.5rem' }}>{student.dorm}</td>
-                          <td style={{ color: 'var(--absent)', fontWeight: 700, padding: '0.5rem' }}>{student.absentCount} סבבים</td>
-                          <td style={{ padding: '0.5rem' }}>
-                            <span className="badge red" style={{ fontWeight: 700, padding: '0.1rem 0.4rem', fontSize: '0.75rem' }}>
-                              {student.rate}%
-                            </span>
-                          </td>
-                          <td style={{ padding: '0.5rem', textAlign: 'left' }}>
-                            <a 
-                              href={`tel:${student.parentPhone}`}
-                              className="action-btn"
-                              title={`התקשר ל${student.parentName} (${student.parentPhone})`}
-                              style={{ padding: '0.2rem 0.35rem', backgroundColor: 'var(--accent-light)', borderColor: 'transparent', color: 'var(--accent)', display: 'inline-flex' }}
-                            >
-                              <Phone size={11} />
-                            </a>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* תצוגת מובייל: כרטיסים אנכיים אלגנטיים לרוחב מלא */}
-                <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.75rem' }}>
-                  {chronicAbsences.map((student) => (
-                    <div key={student.id} style={{
-                      backgroundColor: 'var(--bg-app)',
-                      padding: '0.75rem 1rem',
-                      borderRadius: '12px',
-                      border: '1px solid var(--border-color)',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: '0.75rem'
-                    }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: 0 }}>
-                        <span style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '0.9rem' }}>{student.name}</span>
-                        <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          <span>קבוצה: {student.dorm}</span>
-                          <span>•</span>
-                          <span style={{ color: 'var(--absent)', fontWeight: 600 }}>חיסור: {student.absentCount} סבבים</span>
-                        </div>
-                      </div>
-                      
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
-                        <span className="badge red" style={{ fontWeight: 800, padding: '0.25rem 0.5rem', fontSize: '0.72rem', borderRadius: '8px' }}>
-                          {student.rate}% נוכחות
-                        </span>
-                        <a 
-                          href={`tel:${student.parentPhone}`}
-                          className="action-btn"
-                          title={`התקשר ל${student.parentName} (${student.parentPhone})`}
-                          style={{ 
-                            padding: '0.5rem', 
-                            backgroundColor: 'var(--accent-light)', 
-                            borderColor: 'transparent', 
-                            color: 'var(--accent)', 
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '32px',
-                            height: '32px'
-                          }}
-                        >
-                          <Phone size={14} />
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div className="empty-state" style={{ padding: '1.5rem 1rem' }}>
-                <div className="empty-state-icon" style={{ backgroundColor: 'var(--present-bg)', color: 'var(--present)', width: '48px', height: '48px' }}>
-                  <CheckCircle size={20} />
-                </div>
-                <div className="empty-state-title" style={{ color: 'var(--present)', fontSize: '1rem' }}>מצב מצוין!</div>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>אין אף חניך עם נוכחות נמוכה כעת.</p>
-              </div>
-            )}
-          </div>
-
-          {/* כרטיס פעילויות אחרונות בצוות */}
-          <div className="card">
-            <h3 style={{ fontWeight: 800, fontSize: '1.15rem', color: 'var(--primary)', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <History size={18} />
-              <span>פעילויות אחרונות בצוות</span>
-            </h3>
-            
-            {history && history.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                {history.slice(0, 4).map((log, idx) => (
-                  <div key={idx} style={{ 
-                    display: 'flex', 
-                    alignItems: 'flex-start', 
-                    gap: '0.65rem', 
-                    paddingBottom: idx < 3 ? '0.85rem' : '0',
-                    borderBottom: idx < 3 ? '1px solid var(--border-color)' : 'none'
-                  }}>
-                    <div style={{ 
-                      backgroundColor: 'var(--bg-app)', 
-                      padding: '0.4rem', 
-                      borderRadius: '50%',
-                      color: 'var(--text-muted)',
-                      flexShrink: 0
-                    }}>
-                      <CalendarDays size={16} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <strong style={{ fontSize: '0.9rem', color: 'var(--primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {getSessionName(log.session)}
-                        </strong>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flexShrink: 0 }}>
-                          {formatDate(log.date)}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                        בוצע על ידי: {log.markedBy || 'צוות פנימייה'}
-                      </div>
-                      <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
-                        <span className="attendance-tag present" style={{ fontSize: '0.65rem', padding: '0.05rem 0.25rem' }}>
-                          נוכחים: {Object.values(log.records).filter(r => r === 'present').length}
-                        </span>
-                        <span className="attendance-tag absent" style={{ fontSize: '0.65rem', padding: '0.05rem 0.25rem' }}>
-                          חסרים: {Object.values(log.records).filter(r => r === 'absent').length}
-                        </span>
-                        <span className="attendance-tag leave" style={{ fontSize: '0.65rem', padding: '0.05rem 0.25rem' }}>
-                          בבית: {Object.values(log.records).filter(r => r === 'leave').length}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="empty-state" style={{ padding: '2rem 1rem' }}>
-                <div className="empty-state-icon">
-                  <History size={20} />
-                </div>
-                <div className="empty-state-title">אין היסטוריית רישום</div>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>טרם בוצעו סבבי נוכחות במערכת.</p>
-              </div>
-            )}
-          </div>
-
-        </div>
-
-      </div>
-
-      {/* חלון צף (Modal) להצגת שמות חניכים מתוך הגרף */}
-      {modalData && (
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.6)',
-          backdropFilter: 'blur(4px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          padding: '1rem'
-        }} onClick={() => setModalData(null)}>
-          <div style={{
-            backgroundColor: '#ffffff',
-            borderRadius: '16px',
-            width: '100%',
-            maxWidth: '360px',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-            maxHeight: '85vh'
-          }} onClick={(e) => e.stopPropagation()}>
-            
-            {/* כותרת החלון */}
-            <div style={{ 
-              padding: '1.25rem', 
-              borderBottom: '1px solid var(--border-color)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              backgroundColor: '#f8fafc'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: modalData.color }}></span>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)', margin: 0 }}>
-                  {modalData.groupName} - {modalData.statusName}
-                </h3>
-              </div>
-              <button 
-                onClick={() => setModalData(null)}
-                style={{ 
-                  background: 'none', border: 'none', color: 'var(--text-muted)', 
-                  cursor: 'pointer', padding: '0.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}
+        <div className="dash-header-actions">
+          <div className="btn-group dash-period" role="tablist" aria-label="תקופה">
+            {PERIODS.map(p => (
+              <button
+                key={p.id}
+                type="button"
+                role="tab"
+                aria-selected={period === p.id}
+                className={`toggle-btn ${period === p.id ? 'active' : ''}`}
+                onClick={() => setPeriod(p.id)}
               >
-                <X size={20} />
+                {p.label}
               </button>
-            </div>
-
-            {/* רשימת שמות */}
-            <div style={{ padding: '0.5rem 0', overflowY: 'auto', flex: 1 }}>
-              {getModalStudents().length > 0 ? (
-                <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                  {getModalStudents().map(student => (
-                    <li key={student.id} style={{ 
-                      padding: '0.75rem 1.25rem', 
-                      borderBottom: '1px solid #f1f5f9',
-                      fontSize: '0.95rem',
-                      fontWeight: 600,
-                      color: 'var(--primary)'
-                    }}>
-                      {student.name}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                  לא נמצאו חניכים בסטטוס זה.
-                </div>
-              )}
-            </div>
-
+            ))}
           </div>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={handleExportCSV}
+            disabled={exporting}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+          >
+            <Download size={16} />
+            <span>{exporting ? 'מכין קובץ...' : 'ייצוא CSV'}</span>
+          </button>
         </div>
-      )}
+      </div>
 
+      {/* ארבעה מספרים לתקופה */}
+      <div className="stats-grid dash-kpis">
+        <div className="card stat-card">
+          <div className="stat-info">
+            <h3>אחוז נוכחות · {PERIOD_SUFFIX[period]}</h3>
+            <div className="stat-number" style={{ color: kpis.rate === null ? 'var(--text-muted)' : kpis.rate >= 90 ? 'var(--present)' : 'var(--leave)' }}>
+              {kpis.rate === null ? '—' : `${kpis.rate}%`}
+            </div>
+          </div>
+          <div className="stat-icon green"><Percent size={22} /></div>
+        </div>
+        <div className="card stat-card">
+          <div className="stat-info">
+            <h3>היעדרויות</h3>
+            <div className="stat-number" style={{ color: kpis.absent > 0 ? 'var(--absent)' : 'var(--text-muted)' }}>{kpis.absent}</div>
+          </div>
+          <div className="stat-icon red"><UserX size={22} /></div>
+        </div>
+        <div className="card stat-card">
+          <div className="stat-info">
+            <h3>סבבי חובה שהושלמו</h3>
+            <div className="stat-number" style={{ color: kpis.roundsExpected > 0 && kpis.roundsDone === kpis.roundsExpected ? 'var(--present)' : 'var(--primary)' }}>
+              {kpis.roundsDone}<span className="dash-of"> / {kpis.roundsExpected}</span>
+            </div>
+          </div>
+          <div className="stat-icon"><ClipboardCheck size={22} /></div>
+        </div>
+        <div className="card stat-card">
+          <div className="stat-info">
+            <h3>{period === 'day' ? 'חסרים היום' : 'היעדרויות חוזרות'}</h3>
+            <div className="stat-number" style={{ color: kpis.repeatedCount > 0 ? 'var(--absent)' : 'var(--text-muted)' }}>{kpis.repeatedCount}</div>
+          </div>
+          <div className="stat-icon amber"><UserMinus size={22} /></div>
+        </div>
+      </div>
+
+      <div className="dash-sections">
+        <RoundCompletion completion={completion} period={period} today={today} onOpenRound={onOpenRound} />
+        {period !== 'day' && <AttendanceTrend trend={trend} groupNames={groupNames} />}
+        <RepeatedAbsences absences={absences} period={period} />
+
+      {/* כרטיס פעילויות אחרונות בצוות */}
+      <div className="card">
+        <h3 style={{ fontWeight: 800, fontSize: '1.15rem', color: 'var(--primary)', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <History size={18} />
+          <span>פעילויות אחרונות בצוות</span>
+        </h3>
+        
+        {history && history.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+            {history.slice(0, 4).map((log, idx) => (
+              <div key={idx} style={{ 
+                display: 'flex', 
+                alignItems: 'flex-start', 
+                gap: '0.65rem', 
+                paddingBottom: idx < 3 ? '0.85rem' : '0',
+                borderBottom: idx < 3 ? '1px solid var(--border-color)' : 'none'
+              }}>
+                <div style={{ 
+                  backgroundColor: 'var(--bg-app)', 
+                  padding: '0.4rem', 
+                  borderRadius: '50%',
+                  color: 'var(--text-muted)',
+                  flexShrink: 0
+                }}>
+                  <CalendarDays size={16} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <strong style={{ fontSize: '0.9rem', color: 'var(--primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {getSessionName(log.session)}
+                    </strong>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flexShrink: 0 }}>
+                      {formatDate(log.date)}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                    בוצע על ידי: {log.markedBy || 'צוות פנימייה'}
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+                    <span className="attendance-tag present" style={{ fontSize: '0.65rem', padding: '0.05rem 0.25rem' }}>
+                      נוכחים: {Object.values(log.records).filter(r => r === 'present').length}
+                    </span>
+                    <span className="attendance-tag absent" style={{ fontSize: '0.65rem', padding: '0.05rem 0.25rem' }}>
+                      חסרים: {Object.values(log.records).filter(r => r === 'absent').length}
+                    </span>
+                    <span className="attendance-tag leave" style={{ fontSize: '0.65rem', padding: '0.05rem 0.25rem' }}>
+                      בבית: {Object.values(log.records).filter(r => r === 'leave').length}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state" style={{ padding: '2rem 1rem' }}>
+            <div className="empty-state-icon">
+              <History size={20} />
+            </div>
+            <div className="empty-state-title">אין היסטוריית רישום</div>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>טרם בוצעו סבבי נוכחות במערכת.</p>
+          </div>
+        )}
+      </div>
+      </div>
     </div>
   );
 };

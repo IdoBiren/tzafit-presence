@@ -425,7 +425,8 @@ export const addStudent = async (studentData, knownStudents) => {
       const created = await runTransaction(db, async (tx) => {
         const existing = await tx.get(docRef);
         if (existing.exists()) return false;
-        tx.set(docRef, { ...studentData, id });
+        // createdAt: לוח הבקרה לא סופר חניך בסבבים שלפני שנוסף
+        tx.set(docRef, { ...studentData, id, createdAt: new Date().toISOString() });
         return true;
       });
       if (created) return id;
@@ -436,7 +437,7 @@ export const addStudent = async (studentData, knownStudents) => {
     const students = JSON.parse(localStorage.getItem("tzafit_students_v8")) || [];
     while (students.some(s => s.id === candidate.toString())) candidate++;
     const id = candidate.toString();
-    localStorage.setItem("tzafit_students_v8", JSON.stringify([...students, { ...studentData, id }]));
+    localStorage.setItem("tzafit_students_v8", JSON.stringify([...students, { ...studentData, id, createdAt: new Date().toISOString() }]));
     window.dispatchEvent(new Event('storage'));
     return id;
   }

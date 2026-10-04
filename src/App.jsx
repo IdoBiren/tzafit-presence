@@ -65,7 +65,8 @@ function AppContent() {
   const [emergencyState, setEmergencyState] = useState({ active: false, records: {}, reason: '', triggeredAt: null });
   const [activeTab, setActiveTab] = useState('rollcall');
   const [visitedTabs, setVisitedTabs] = useState(() => new Set(['rollcall']));
-  const [dormFilter, setDormFilter] = useState(null);
+  // יעד לרישום הנוכחות כשלוחצים על סבב בלוח הבקרה: { dorm, date, session }
+  const [rollCallTarget, setRollCallTarget] = useState(null);
   const [groupNames, setGroupNames] = useState([]);
   // שגיאות האזנה פעילות, לפי מקור. בלי זה מאזין שנכשל משאיר על המסך
   // נתונים ישנים שנראים עדכניים.
@@ -307,8 +308,13 @@ function AppContent() {
     }
   };
 
-  const clearInitialDormFilter = () => {
-    setDormFilter(null);
+  const handleOpenRound = (dorm, date, session) => {
+    setRollCallTarget({ dorm, date, session });
+    setActiveTab('rollcall');
+  };
+
+  const clearRollCallTarget = () => {
+    setRollCallTarget(null);
   };
 
   // טיפול בהתחברות מוצלחת
@@ -565,8 +571,8 @@ function AppContent() {
               students={students}
               history={history}
               onUpdateSingleAttendance={handleUpdateSingleAttendance}
-              initialDormFilter={dormFilter}
-              clearInitialDormFilter={clearInitialDormFilter}
+              initialTarget={rollCallTarget}
+              clearInitialTarget={clearRollCallTarget}
               user={user}
               groupNames={groupNames}
             />
@@ -576,8 +582,7 @@ function AppContent() {
               <Dashboard
                 students={students}
                 history={history}
-                onNavigateToTab={setActiveTab}
-                setDormFilter={setDormFilter}
+                onOpenRound={handleOpenRound}
                 groupNames={groupNames}
               />
             </div>
