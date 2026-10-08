@@ -1,6 +1,6 @@
 # נוכחות פנימיית צפית — Tzafit Attendance
 
-A Hebrew, RTL, mobile-first web app for boarding-school (`פנימייה`) attendance and emergency roll-call. Counselors (`מדריכים`) mark students present/absent/at-home from a phone or tablet; every change syncs to all devices in real time. Admins can trigger an institution-wide emergency headcount that instantly takes over every counselor's screen.
+A Hebrew, RTL, mobile-first web app for boarding-school (`פנימייה`) attendance and emergency roll-call. Counselors (`מדריכים`) mark students present / not-found-at-this-round (with an optional reason) / at-home from a phone or tablet; every change syncs to all devices in real time. Admins can trigger an institution-wide emergency headcount that instantly takes over every counselor's screen.
 
 Built with React 19 + Vite, backed by Firebase (Firestore + Google Auth), with a full `localStorage` fallback so the app runs without any cloud setup.
 
@@ -8,10 +8,10 @@ Built with React 19 + Vite, backed by Firebase (Firestore + Google Auth), with a
 
 ## Features
 
-- **Roll call** — four daily rounds (`פתיחת יום`, `ארוחת ערב`, `כיבוי אורות`, `לילה`), three statuses per student (`נוכח` / `חסר` / `בבית`). Tap-to-clear on the active status. Sorting defaults to unmarked-first so nobody gets skipped.
+- **Roll call** — four daily rounds (`פתיחת יום`, `ארוחת ערב`, `כיבוי אורות`, `לילה`), three statuses per student: `נוכח` (seen at the round), `לא נמצא` (in the school today but elsewhere this round — club, therapy — with optional one-tap reason chips or free text), `בבית` (not in the school today). A student nobody can locate stays unmarked. Tap-to-clear on the active status. Sorting defaults to unmarked-first so nobody gets skipped.
 - **Real-time auto-save** — each tap writes only that one student's field (`setDoc` with `merge: true`), so several counselors can mark the same round at once without overwriting each other.
 - **Emergency mode** — an admin activates it with a reason; every registered student starts as unverified, regardless of the last round — a student wrongly marked at home, or never marked, still has to be accounted for. All screens update live as students are confirmed safe, with a two-column verified/unverified split and a progress bar.
-- **Management dashboard** — a day / week / month switch over four KPIs (attendance rate, absences, required rounds completed, repeated absences); a **round-completion** table (today: groups × rounds, tap a cell to open that exact round; week/month: groups × active days heat map); a daily attendance trend per group; a repeated-absences list with tap-to-call; and CSV export of the full history with a UTF-8 BOM so Hebrew opens correctly in Excel. Month = last 30 days (see Known quirks).
+- **Management dashboard** — a day / week / month switch over four KPIs (% in school, students not found at a round, required rounds completed, students at home); a **round-completion** table (today: groups × rounds, tap a cell to open that exact round; week/month: groups × active days heat map); a daily attendance trend per group; a "not found at a round" list with the reasons counselors entered (informational, not absences) and tap-to-call; and CSV export of the full history with a UTF-8 BOM so Hebrew opens correctly in Excel. Month = last 30 days (see Known quirks).
 - **Staff & permissions** — Google sign-in, one-time display-name setup, and an admin screen for assigning each new counselor a role and a dorm group. New counselors wait on a pending screen until an admin assigns them.
 - **Student management** — add, edit, delete students (name, dorm, room, parent name/phone, notes), and export the full list (including parent details) to CSV.
 - **Group renaming** — admins can rename any of the four dorm groups; students and staff assigned to it are updated in one atomic batch.
@@ -116,7 +116,7 @@ Every new sign-up is created as a `counselor` with no group (the security rules 
 | Collection | Doc ID | Shape |
 |---|---|---|
 | `students` | `"1"`, `"2"`, … | `{ id, name, dorm, room, parentName, parentPhone, notes }` |
-| `history` | `` `${date}_${session}` `` | `{ date, session, records: { [studentId]: "present"\|"absent"\|"leave"\|null }, markedBy, timestamp }` |
+| `history` | `` `${date}_${session}` `` | `{ date, session, records: { [studentId]: "present"\|"absent"\|"leave"\|null }, notes: { [studentId]: reason }, markedBy, timestamp }` — `"absent"` is shown as "לא נמצא" (in school, not at this round) and is not counted as an absence |
 | `emergency` | `state` (singleton) | `{ active, reason, triggeredAt, records: { [studentId]: boolean } }` |
 | `settings` | `groups` (singleton) | `{ names: [string, string, string, string] }` — the dorm group names, renamable by admins |
 | `users` | Firebase Auth `uid` | `{ uid, displayName, email, photoURL, role, group, needsNameSetup, createdAt }` |
@@ -132,7 +132,7 @@ The emergency doc being a **single document** is what makes the shared live chec
 | `App.jsx` | State, realtime subscriptions, auth gate, tab switching, nav bar |
 | `Header.jsx` | Title bar, user avatar, role badge, logout |
 | `RollCall.jsx` | The main screen: date/session picker, filters, student cards, auto-save |
-| `Dashboard.jsx` | Period switch, KPIs, CSV export; sections in `components/dashboard/` (`RoundCompletion`, `AttendanceTrend`, `RepeatedAbsences`); all math in `utils/attendanceStats.js` |
+| `Dashboard.jsx` | Period switch, KPIs, CSV export; sections in `components/dashboard/` (`RoundCompletion`, `AttendanceTrend`, `NotFoundList`); all math in `utils/attendanceStats.js` |
 | `EmergencyMode.jsx` | Emergency activation form and the live safe/unverified checklist |
 | `StudentManager.jsx` | Student CRUD and student-list CSV export |
 | `StaffManager.jsx` | Admin-only: assign roles and groups, delete users |

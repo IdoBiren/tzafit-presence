@@ -50,8 +50,11 @@ const run = async () => {
     projectId: PROJECT_ID,
     firestore: {
       rules: readFileSync('firestore.rules', 'utf8'),
-      host: '127.0.0.1',
-      port: 8080,
+      // emulators:exec מגדיר FIRESTORE_EMULATOR_HOST לפורט שהאמולטור באמת
+      // עלה עליו. קידוד קשיח של 8080 גרם לבדיקות לדבר עם תהליך אחר כשהפורט
+      // היה תפוס (למשל שרת Vite של פרויקט אחר) ולהיכשל בשגיאה ריקה.
+      host: (process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080').split(':')[0],
+      port: Number((process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080').split(':')[1]),
     },
   });
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, CalendarDays, History, Percent, UserX, ClipboardCheck, UserMinus } from 'lucide-react';
+import { Download, CalendarDays, History, Percent, ClipboardCheck, MapPinOff, Home } from 'lucide-react';
 import { fetchAllHistory } from '../utils/storage';
 import {
   SESSION_LABELS,
@@ -8,11 +8,12 @@ import {
   computeKpis,
   computeRoundCompletion,
   computeDailyTrend,
-  computeRepeatedAbsences
+  computeNotFound,
+  STATUS_LABELS
 } from '../utils/attendanceStats';
 import RoundCompletion from './dashboard/RoundCompletion';
 import AttendanceTrend from './dashboard/AttendanceTrend';
-import RepeatedAbsences from './dashboard/RepeatedAbsences';
+import NotFoundList from './dashboard/NotFoundList';
 
 const PERIODS = [
   { id: 'day', label: 'היום' },
@@ -34,7 +35,7 @@ const Dashboard = ({ students, history, onOpenRound, groupNames }) => {
   const kpis = computeKpis(args);
   const completion = computeRoundCompletion(args);
   const trend = period === 'day' ? [] : computeDailyTrend(args);
-  const absences = computeRepeatedAbsences(args);
+  const notFound = computeNotFound(args);
 
   // מתי נרשם משהו לאחרונה - כדי שיהיה ברור עד מתי הנתונים מעודכנים
   const lastUpdate = (history || []).reduce((max, h) => (h.timestamp && h.timestamp > max ? h.timestamp : max), '');
@@ -66,7 +67,7 @@ const Dashboard = ({ students, history, onOpenRound, groupNames }) => {
       return;
     }
 
-    const headers = ['תאריך', 'סוג סבב', 'שם חניך', 'קבוצה', 'חדר', 'סטטוס נוכחות', 'נרשם על ידי', 'זמן רישום'];
+    const headers = ['תאריך', 'סוג סבב', 'שם חניך', 'קבוצה', 'חדר', 'סטטוס נוכחות', 'סיבה', 'נרשם על ידי', 'זמן רישום'];
     
     const csvRows = [];
     csvRows.push(headers.join(','));
@@ -81,10 +82,9 @@ const Dashboard = ({ students, history, onOpenRound, groupNames }) => {
       students.forEach(student => {
         // חניך שאף אחד לא סימן אינו "נוכח" - דיווח כזה מסוכן בדוח נוכחות
         const statusVal = session.records[student.id] || null;
-        const statusHebrew =
-          statusVal === 'present' ? 'נוכח' :
-          statusVal === 'absent' ? 'לא נוכח' :
-          statusVal === 'leave' ? 'בבית' : 'טרם סומן';
+        const statusHebrew = STATUS_LABELS[statusVal] || 'טרם סומן';
+        // סיבת "לא נמצא" (חוג, טיפול...) - טקסט חופשי, ולכן במירכאות עם escape
+        const note = (session.notes?.[student.id] || '').replace(/"/g, '""');
         
         const row = [
           session.date,
@@ -93,6 +93,7 @@ const Dashboard = ({ students, history, onOpenRound, groupNames }) => {
           `"${student.dorm}"`,
           student.room,
           statusHebrew,
+          `"${note}"`,
           `"${session.markedBy || 'צוות'}"`,
           new Date(session.timestamp).toLocaleTimeString('he-IL')
         ];
@@ -156,22 +157,24 @@ const Dashboard = ({ students, history, onOpenRound, groupNames }) => {
       </div>
 
       {/* ארבעה מספרים לתקופה */}
+      {/* "לא נמצא" אינו היעדרות (בפנימייה, אבל בחוג/טיפול) - לכן המדד הוא
+          אחוז בפנימייה ולא אחוז נוכחות, ובלי אדום */}
       <div className="stats-grid dash-kpis">
         <div className="card stat-card">
           <div className="stat-info">
-            <h3>אחוז נוכחות · {PERIOD_SUFFIX[period]}</h3>
-            <div className="stat-number" style={{ color: kpis.rate === null ? 'var(--text-muted)' : kpis.rate >= 90 ? 'var(--present)' : 'var(--leave)' }}>
-              {kpis.rate === null ? '—' : `${kpis.rate}%`}
+            <h3>בפנימייה · {PERIOD_SUFFIX[period]}</h3>
+            <div className="stat-number" style={{ color: kpis.inSchoolRate === null ? 'var(--text-muted)' : 'var(--primary)' }}>
+              {kpis.inSchoolRate === null ? '—' : `${kpis.inSchoolRate}%`}
             </div>
           </div>
           <div className="stat-icon green"><Percent size={22} /></div>
         </div>
         <div className="card stat-card">
           <div className="stat-info">
-            <h3>היעדרויות</h3>
-            <div className="stat-number" style={{ color: kpis.absent > 0 ? 'var(--absent)' : 'var(--text-muted)' }}>{kpis.absent}</div>
+            <h3>חניכים שלא נמצאו בסבב</h3>
+            <div className="stat-number" style={{ color: kpis.notFoundStudents > 0 ? 'var(--notfound)' : 'var(--text-muted)' }}>{kpis.notFoundStudents}</div>
           </div>
-          <div className="stat-icon red"><UserX size={22} /></div>
+          <div className="stat-icon"><MapPinOff size={22} /></div>
         </div>
         <div className="card stat-card">
           <div className="stat-info">
@@ -184,17 +187,17 @@ const Dashboard = ({ students, history, onOpenRound, groupNames }) => {
         </div>
         <div className="card stat-card">
           <div className="stat-info">
-            <h3>{period === 'day' ? 'חסרים היום' : 'היעדרויות חוזרות'}</h3>
-            <div className="stat-number" style={{ color: kpis.repeatedCount > 0 ? 'var(--absent)' : 'var(--text-muted)' }}>{kpis.repeatedCount}</div>
+            <h3>חניכים בבית</h3>
+            <div className="stat-number" style={{ color: kpis.homeStudents > 0 ? 'var(--leave)' : 'var(--text-muted)' }}>{kpis.homeStudents}</div>
           </div>
-          <div className="stat-icon amber"><UserMinus size={22} /></div>
+          <div className="stat-icon amber"><Home size={22} /></div>
         </div>
       </div>
 
       <div className="dash-sections">
         <RoundCompletion completion={completion} period={period} today={today} onOpenRound={onOpenRound} />
         {period !== 'day' && <AttendanceTrend trend={trend} groupNames={groupNames} />}
-        <RepeatedAbsences absences={absences} period={period} />
+        <NotFoundList students={notFound} period={period} />
 
       {/* כרטיס פעילויות אחרונות בצוות */}
       <div className="card">
@@ -239,7 +242,7 @@ const Dashboard = ({ students, history, onOpenRound, groupNames }) => {
                       נוכחים: {Object.values(log.records).filter(r => r === 'present').length}
                     </span>
                     <span className="attendance-tag absent" style={{ fontSize: '0.65rem', padding: '0.05rem 0.25rem' }}>
-                      חסרים: {Object.values(log.records).filter(r => r === 'absent').length}
+                      לא נמצאו: {Object.values(log.records).filter(r => r === 'absent').length}
                     </span>
                     <span className="attendance-tag leave" style={{ fontSize: '0.65rem', padding: '0.05rem 0.25rem' }}>
                       בבית: {Object.values(log.records).filter(r => r === 'leave').length}

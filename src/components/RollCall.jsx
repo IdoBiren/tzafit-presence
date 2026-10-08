@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import { Check, X, Home, Search, User, Filter } from 'lucide-react';
+import { Check, X, Home, Search, User, Filter, MapPinOff } from 'lucide-react';
 import { useToast } from './ToastProvider';
 import { getDormColor } from '../utils/dormColors';
 import { getHistoryCutoffDate } from '../utils/storage';
 import { todayLocalISO } from '../utils/attendanceStats';
 import { describeSaveError, withPendingTimeout } from '../utils/saveErrors';
+import AbsenceReason from './AbsenceReason';
 
-const RollCall = ({ students, history, onUpdateSingleAttendance, initialTarget, clearInitialTarget, user, groupNames }) => {
+const RollCall = ({ students, history, onUpdateSingleAttendance, onUpdateAttendanceNote, initialTarget, clearInitialTarget, user, groupNames }) => {
   const { showToast } = useToast();
   const [selectedDorm, setSelectedDorm] = useState(() => {
     if (initialTarget?.dorm) {
@@ -123,6 +124,40 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialTarget, 
     }
   };
 
+
+  // סיבות "לא נמצא" של הסבב המוצג, ישירות מהסבב השמור (מתעדכן מיד גם בלי
+  // רשת בזכות המטמון המקומי)
+  const roundNotes = history.find(h => h.date === date && h.session === session)?.notes || {};
+
+  // שמירת סיבה - אותו מנגנון תגים כמו סימון נוכחות (שומר / ממתין לרשת /
+  // שגיאה), כדי שגם סיבה לא תיכשל בשקט. זורק הלאה כדי ש-AbsenceReason
+  // יחזור למצב עריכה.
+  const handleNoteSave = async (studentId, note) => {
+    const writeId = (latestWriteRef.current[studentId] || 0) + 1;
+    latestWriteRef.current[studentId] = writeId;
+    const isLatest = () => latestWriteRef.current[studentId] === writeId;
+    setStudentSaveStatus(prev => ({ ...prev, [studentId]: 'saving' }));
+
+    try {
+      await withPendingTimeout(
+        onUpdateAttendanceNote(date, session, studentId, note),
+        () => {
+          if (isLatest()) setStudentSaveStatus(prev => ({ ...prev, [studentId]: 'pending' }));
+        }
+      );
+      if (!isLatest()) return;
+      setStudentSaveStatus(prev => {
+        const next = { ...prev };
+        delete next[studentId];
+        return next;
+      });
+    } catch (error) {
+      if (isLatest()) setStudentSaveStatus(prev => ({ ...prev, [studentId]: 'error' }));
+      const student = students.find(s => s.id === studentId);
+      showToast(`שמירת הסיבה של ${student?.name || 'חניך'} נכשלה: ${describeSaveError(error)}`, 'error', 8000);
+      throw error;
+    }
+  };
 
   // סינון חניכים לפי בית וחיפוש
   const filteredStudents = students.filter(student => {
@@ -314,7 +349,7 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialTarget, 
           <span>|</span>
           <span style={{ color: 'var(--present)' }}>נוכח: <strong>{presentCount}</strong></span>
           <span>|</span>
-          <span style={{ color: 'var(--absent)' }}>לא נוכח: <strong>{absentCount}</strong></span>
+          <span style={{ color: 'var(--notfound)' }}>לא נמצאו: <strong>{absentCount}</strong></span>
           <span>|</span>
           <span style={{ color: 'var(--leave)' }}>בבית: <strong>{leaveCount}</strong></span>
         </div>
@@ -375,8 +410,9 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialTarget, 
                     className={`action-btn absent-btn ${currentStatus === 'absent' ? 'active' : ''}`}
                     onClick={() => handleStatusChange(student.id, 'absent')}
                   >
-                    <X size={14} />
-                    <span>חסר</span>
+                    {/* בטלפון מוצג רק האייקון - ✕ נראה כמו "נעדר", וזה לא המצב */}
+                    <MapPinOff size={14} />
+                    <span>לא נמצא</span>
                   </button>
                   <button 
                     type="button" 
@@ -387,6 +423,14 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, initialTarget, 
                     <span>בבית</span>
                   </button>
                 </div>
+
+                {/* "לא נמצא" = בפנימייה אבל לא בסבב; הסיבה (חוג, טיפול...) רשות */}
+                {currentStatus === 'absent' && (
+                  <AbsenceReason
+                    note={roundNotes[student.id]}
+                    onSave={(note) => handleNoteSave(student.id, note)}
+                  />
+                )}
               </div>
             );
           })}

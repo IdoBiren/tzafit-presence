@@ -30,6 +30,7 @@ import {
   deleteStudent,
   subscribeToHistory,
   updateSingleAttendanceRecord,
+  updateAttendanceNote,
   subscribeToEmergency, 
   saveEmergencyState,
   updateEmergencyRecords,
@@ -571,6 +572,7 @@ function AppContent() {
               students={students}
               history={history}
               onUpdateSingleAttendance={handleUpdateSingleAttendance}
+              onUpdateAttendanceNote={updateAttendanceNote}
               initialTarget={rollCallTarget}
               clearInitialTarget={clearRollCallTarget}
               user={user}

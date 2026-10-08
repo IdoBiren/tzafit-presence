@@ -21,8 +21,13 @@ export const SESSION_LABELS = {
 // כך אין צורך לנהל לוח חגים.
 export const DEFAULT_ACTIVE_WEEKDAYS = [0, 1, 3];
 
-// סף "היעדרויות חוזרות" לפי תקופה
-export const REPEATED_ABSENCE_THRESHOLD = { day: 1, week: 2, month: 3 };
+// משמעות הסטטוסים (הערך השמור לא השתנה, רק התצוגה):
+//   'present' = נוכח - ראו אותו פיזית בסבב
+//   'absent'  = "לא נמצא" - בפנימייה היום, אבל לא בסבב (חוג, טיפול). *אינו היעדרות*
+//   'leave'   = בבית - לא בפנימייה היום
+//   null      = טרם סומן - כולל חניך שאף אחד לא יודע איפה הוא
+// לכן המדד הוא "אחוז בפנימייה" = (נוכח + לא נמצא) / כל המסומנים.
+export const STATUS_LABELS = { present: 'נוכח', absent: 'לא נמצא', leave: 'בבית' };
 
 export const PERIOD_DAYS = { day: 1, week: 7, month: 30 };
 
@@ -138,24 +143,38 @@ export const computeRoundCompletion = ({ students, history, groupNames, period, 
   return { dates, days, groups };
 };
 
+// ספירת סטטוסים בתקופה, רק לחניכים שהיו רשומים באותו יום
+const countStatuses = (students, index, dates, filter = () => true) => {
+  const counts = { present: 0, absent: 0, leave: 0 };
+  // אילו חניכים (ייחודיים) קיבלו כל סטטוס - "3 חניכים בבית" ולא "9 סימונים"
+  const studentsBy = { present: new Set(), absent: new Set(), leave: new Set() };
+  dates.forEach(date => {
+    ALL_SESSIONS.forEach(session => {
+      const record = index[`${date}_${session}`];
+      if (!record) return;
+      rosterOn(students, date).filter(filter).forEach(s => {
+        const status = record.records?.[s.id];
+        if (status in counts) {
+          counts[status]++;
+          studentsBy[status].add(s.id);
+        }
+      });
+    });
+  });
+  return { ...counts, studentsBy };
+};
+
+// אחוז בפנימייה: (נוכח + לא נמצא) מתוך כל המסומנים. null כשאין סימונים.
+const inSchoolRate = ({ present, absent, leave }) => {
+  const total = present + absent + leave;
+  return total > 0 ? Math.round(((present + absent) / total) * 100) : null;
+};
+
 // ארבעת המספרים העליונים לתקופה
 export const computeKpis = ({ students, history, groupNames, period, today = todayLocalISO() }) => {
   const index = indexHistory(history);
   const completion = computeRoundCompletion({ students, history, groupNames, period, today });
-
-  let present = 0;
-  let absent = 0;
-  completion.dates.forEach(date => {
-    ALL_SESSIONS.forEach(session => {
-      const record = index[`${date}_${session}`];
-      if (!record) return;
-      rosterOn(students, date).forEach(s => {
-        const status = record.records?.[s.id];
-        if (status === 'present') present++;
-        else if (status === 'absent') absent++;
-      });
-    });
-  });
+  const counts = countStatuses(students, index, completion.dates);
 
   // סבב חובה של קבוצה ביום פעילות = יחידה אחת. קבוצה ריקה ויום "אולי סגור" לא נספרים.
   let roundsDone = 0;
@@ -169,77 +188,74 @@ export const computeKpis = ({ students, history, groupNames, period, today = tod
     });
   });
 
-  const repeated = computeRepeatedAbsences({ students, history, period, today });
-
   return {
-    rate: present + absent > 0 ? Math.round((present / (present + absent)) * 100) : null,
-    present,
-    absent,
+    inSchoolRate: inSchoolRate(counts),
+    present: counts.present,
+    notFound: counts.absent,
+    leave: counts.leave,
+    notFoundStudents: counts.studentsBy.absent.size,
+    homeStudents: counts.studentsBy.leave.size,
     roundsDone,
-    roundsExpected,
-    repeatedCount: repeated.length
+    roundsExpected
   };
 };
 
-// אחוז נוכחות יומי לכל קבוצה ולכל הפנימייה - רק ימים שבהם התבצע רישום
+// אחוז בפנימייה יומי לכל קבוצה ולכל הפנימייה - רק ימים שבהם התבצע רישום
 export const computeDailyTrend = ({ students, history, groupNames, period, today = todayLocalISO() }) => {
   const index = indexHistory(history);
-  const rate = (p, a) => (p + a > 0 ? Math.round((p / (p + a)) * 100) : null);
 
   return getPeriodDates(period, today)
     .filter(date => ALL_SESSIONS.some(s => hasAnyMark(index[`${date}_${s}`])))
     .map(date => {
-      const counts = {};
-      const overall = { p: 0, a: 0 };
-      ALL_SESSIONS.forEach(session => {
-        const record = index[`${date}_${session}`];
-        if (!record) return;
-        rosterOn(students, date).forEach(s => {
-          const status = record.records?.[s.id];
-          if (status !== 'present' && status !== 'absent') return;
-          counts[s.dorm] = counts[s.dorm] || { p: 0, a: 0 };
-          const key = status === 'present' ? 'p' : 'a';
-          counts[s.dorm][key]++;
-          overall[key]++;
-        });
+      const point = {
+        date,
+        label: `${weekdayLetter(date)} ${formatShortDate(date)}`,
+        overall: inSchoolRate(countStatuses(students, index, [date]))
+      };
+      (groupNames || []).forEach(g => {
+        point[g] = inSchoolRate(countStatuses(students, index, [date], s => s.dorm === g));
       });
-      const point = { date, label: `${weekdayLetter(date)} ${formatShortDate(date)}`, overall: rate(overall.p, overall.a) };
-      (groupNames || []).forEach(g => { point[g] = counts[g] ? rate(counts[g].p, counts[g].a) : null; });
       return point;
     });
 };
 
-// חניכים שחסרו לפחות REPEATED_ABSENCE_THRESHOLD[period] פעמים בתקופה,
-// ממוינים ממי שחסר הכי הרבה
-export const computeRepeatedAbsences = ({ students, history, period, today = todayLocalISO() }) => {
+// חניכים שסומנו "לא נמצא" בתקופה, עם הסיבות. מידע בלבד - לא היעדרות.
+// ממוינים ממי שלא נמצא הכי הרבה פעמים; reasons מקובצות ("חוג" x4),
+// ופעמים בלי סיבה נספרות בנפרד - שם כדאי לברר.
+export const computeNotFound = ({ students, history, period, today = todayLocalISO() }) => {
   const index = indexHistory(history);
   const dates = getPeriodDates(period, today);
-  const threshold = REPEATED_ABSENCE_THRESHOLD[period] || 1;
 
   return students
     .map(student => {
-      let present = 0;
-      let absent = 0;
-      const absences = []; // [{ date, session }]
+      const occurrences = []; // [{ date, session, note }]
       dates.forEach(date => {
         if (!isOnRosterOn(student, date)) return;
         ALL_SESSIONS.forEach(session => {
-          const status = index[`${date}_${session}`]?.records?.[student.id];
-          if (status === 'present') present++;
-          else if (status === 'absent') {
-            absent++;
-            absences.push({ date, session });
+          const record = index[`${date}_${session}`];
+          if (record?.records?.[student.id] === 'absent') {
+            occurrences.push({ date, session, note: record.notes?.[student.id] || '' });
           }
         });
       });
+      const reasonCounts = {};
+      let withoutReason = 0;
+      occurrences.forEach(o => {
+        if (o.note) reasonCounts[o.note] = (reasonCounts[o.note] || 0) + 1;
+        else withoutReason++;
+      });
+      const reasons = Object.entries(reasonCounts)
+        .map(([reason, count]) => ({ reason, count }))
+        .sort((a, b) => b.count - a.count);
       return {
         ...student,
-        absentCount: absent,
-        absences,
-        lastAbsence: absences[absences.length - 1] || null,
-        rate: present + absent > 0 ? Math.round((present / (present + absent)) * 100) : null
+        count: occurrences.length,
+        occurrences,
+        reasons,
+        withoutReason,
+        last: occurrences[occurrences.length - 1] || null
       };
     })
-    .filter(s => s.absentCount >= threshold)
-    .sort((a, b) => b.absentCount - a.absentCount || (a.rate ?? 100) - (b.rate ?? 100));
+    .filter(s => s.count > 0)
+    .sort((a, b) => b.count - a.count || b.withoutReason - a.withoutReason);
 };

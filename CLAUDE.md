@@ -9,7 +9,7 @@ Hebrew, RTL, mobile-first attendance + emergency roll-call app for the Tzafit bo
 | `npm run dev` | Vite on :5173 (also `.claude/launch.json` → `tzafit-dev`) |
 | `npm run lint` | ESLint — must stay clean; CI doesn't run it, so run it yourself |
 | `npm run build` | Must pass. The >500 kB chunk warning is known (firebase in the main chunk) |
-| `npm run test:rules` | Behavioral tests of `firestore.rules` against the emulator. Needs Java (JDK) + firebase-tools. Only test suite in the repo |
+| `npm run test:rules` | Behavioral tests of `firestore.rules` against the emulator. Needs Java (JDK) + firebase-tools. Only test suite in the repo. The test reads the emulator address from `FIRESTORE_EMULATOR_HOST`; if port 8080 is taken (it has been, by another project's Vite server), run with a copy of `firebase.json` whose `emulators.firestore.port` is free: `npx firebase emulators:exec --config <copy> --only firestore "node firestore.rules.test.mjs"` |
 
 There are no unit/component tests. Verify UI changes in the browser preview — use the **`tzafit-demo`** launch config (port 5174): `--mode demo` loads the gitignored `.env.demo.local`, which blanks `VITE_FIREBASE_PROJECT_ID`, so the app runs on localStorage and can't touch production. Sign in by setting `sessionStorage.tzafit_demo_user` (admin: uid `demo-admin-123`, role `admin`, group `כללי`) and reloading twice (the first load seeds localStorage). If `.env.demo.local` is missing, recreate it with the single line `VITE_FIREBASE_PROJECT_ID=`.
 
@@ -33,8 +33,9 @@ Push to `main` → `.github/workflows/deploy.yml` builds and deploys **Hosting o
 
 ## Data model
 
-`students/{id}`, `history/{date}_{session}` (`records: {studentId: present|absent|leave|null}`), `emergency/state` (singleton), `users/{uid}`, `settings/groups` (`{names: [4 strings]}`).
+`students/{id}`, `history/{date}_{session}` (`records: {studentId: present|absent|leave|null}`, `notes: {studentId: reason}`), `emergency/state` (singleton), `users/{uid}`, `settings/groups` (`{names: [4 strings]}`).
 
+- **Status meanings — `'absent'` is NOT an absence.** `present` = seen at the round; `'absent'` is shown as **"לא נמצא"**: in the boarding school today but not at this round (club, therapy…), with an optional reason in `notes.<id>`; `leave` = "בבית", not in the school today; `null` = unmarked, which is also what counselors use when nobody knows where a student is. The stored value stayed `'absent'` on purpose (no migration) — only labels changed; use `STATUS_LABELS` from `attendanceStats.js`. The dashboard's metric is "% in school" = (present + absent) / marked, and "not found" is informational, never red. A status change away from `'absent'` deletes that student's note in the same write.
 - Sessions: `morning, afternoon, evening, night` (UI: פתיחת יום / ארוחת ערב / כיבוי אורות / לילה). `SESSION_ORDER` in storage.js.
 - `history` is sorted chronologically (date, then session) by `sortHistoryChronologically`, **not** by `timestamp`. The dashboard doesn't rely on order — it indexes rounds by `${date}_${session}`.
 - **The app only listens to the last `HISTORY_WINDOW_DAYS` (30) of history** (`where('date', '>=', cutoff)`). The project is on the free Spark plan (50K reads/day, and the app *stops working* when it runs out), and every app open reads every doc in the listener — so never widen a listener to an unbounded, growing collection. The dashboard's "month" period is exactly this window; CSV export fetches all history once via `fetchAllHistory`. Watch usage in Firebase Console → Firestore → Usage.

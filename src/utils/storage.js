@@ -478,7 +478,7 @@ export const updateSingleAttendanceRecord = async (date, session, studentId, sta
     try {
       const docRef = doc(db, "history", docId);
       // שימוש ב-merge כדי לעדכן רק את החניך הספציפי בלי לדרוס שינויים של אחרים
-      await setDoc(docRef, {
+      const update = {
         date,
         session,
         markedBy,
@@ -486,7 +486,13 @@ export const updateSingleAttendanceRecord = async (date, session, studentId, sta
           [studentId]: status
         },
         timestamp: new Date().toISOString()
-      }, { merge: true });
+      };
+      // סיבת "לא נמצא" שייכת רק לסטטוס הזה - מעבר לסטטוס אחר מוחק אותה
+      // באותה כתיבה, כדי שלא תישאר סיבה יתומה ליד "נוכח"
+      if (status !== 'absent') {
+        update.notes = { [studentId]: deleteField() };
+      }
+      await setDoc(docRef, update, { merge: true });
     } catch (error) {
       console.error("שגיאה בעדכון נוכחות לחניך בודד בענן:", error);
       throw error;
@@ -500,6 +506,9 @@ export const updateSingleAttendanceRecord = async (date, session, studentId, sta
       history[existingIndex].records[studentId] = status;
       history[existingIndex].timestamp = new Date().toISOString();
       history[existingIndex].markedBy = markedBy;
+      if (status !== 'absent' && history[existingIndex].notes) {
+        delete history[existingIndex].notes[studentId];
+      }
     } else {
       const newRecord = {
         date,
@@ -510,6 +519,30 @@ export const updateSingleAttendanceRecord = async (date, session, studentId, sta
       };
       history.unshift(newRecord);
     }
+    localStorage.setItem("tzafit_history_v7", JSON.stringify(history));
+    window.dispatchEvent(new Event('storage'));
+  }
+};
+
+// 5א. סיבה לסטטוס "לא נמצא" (חוג, טיפול...) - שדה notes.<id> במסמך הסבב,
+// ליד records ולא בתוכו, כדי שמבנה records שלוח הבקרה והייצוא קוראים לא ישתנה.
+// הערה ריקה מוחקת את השדה.
+export const updateAttendanceNote = async (date, session, studentId, note) => {
+  const trimmed = (note || '').trim();
+
+  if (isFirebaseConfigured) {
+    await setDoc(doc(db, "history", `${date}_${session}`), {
+      notes: { [studentId]: trimmed ? trimmed : deleteField() }
+    }, { merge: true });
+  } else {
+    const history = JSON.parse(localStorage.getItem("tzafit_history_v7")) || [];
+    const record = history.find(h => h.date === date && h.session === session);
+    if (!record) {
+      throw new Error('הסבב עוד לא נשמר - סמן קודם את החניך ונסה שוב.');
+    }
+    record.notes = { ...(record.notes || {}) };
+    if (trimmed) record.notes[studentId] = trimmed;
+    else delete record.notes[studentId];
     localStorage.setItem("tzafit_history_v7", JSON.stringify(history));
     window.dispatchEvent(new Event('storage'));
   }

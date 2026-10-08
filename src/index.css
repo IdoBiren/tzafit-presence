@@ -17,6 +17,12 @@
   --absent: #e11d48;         /* אדום / חסר */
   --absent-bg: #fef2f2;
   --absent-border: #ffe4e6;
+
+  /* "לא נמצא" (ערך absent): בפנימייה אבל לא בסבב - חוג, טיפול. לא מצב
+     מדאיג, ולכן לא אדום; האדום (--absent) נשאר לשגיאות ולהחמצות */
+  --notfound: #6366f1;
+  --notfound-bg: #eef2ff;
+  --notfound-border: #c7d2fe;
   
   --leave: #d97706;          /* כתום/צהוב / בבית */
   --leave-bg: #fef3c7;
@@ -290,8 +296,8 @@ a {
 }
 
 .student-card.absent {
-  border-right-color: var(--absent);
-  background-color: var(--absent-bg);
+  border-right-color: var(--notfound);
+  background-color: var(--notfound-bg);
 }
 
 .student-card.leave {
@@ -324,7 +330,7 @@ a {
 }
 
 .student-card.absent .student-avatar {
-  background-color: var(--absent);
+  background-color: var(--notfound);
 }
 
 .student-card.leave .student-avatar {
@@ -399,9 +405,67 @@ a {
 }
 
 .action-btn.absent-btn.active {
-  background-color: var(--absent);
+  background-color: var(--notfound);
   color: white;
-  border-color: var(--absent);
+  border-color: var(--notfound);
+}
+
+/* שורת סיבה ל"לא נמצא" בכרטיס החניך */
+.reason-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  align-items: center;
+}
+
+.reason-chip {
+  border: 1px solid var(--notfound-border);
+  background: white;
+  color: var(--notfound);
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  min-height: 36px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.reason-chip.active {
+  background: var(--notfound);
+  color: white;
+}
+
+.reason-chip.ghost {
+  border-color: transparent;
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.reason-input {
+  flex: 1 1 160px;
+  min-height: 36px;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--notfound-border);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+.reason-tag {
+  margin-top: 0.6rem;
+  border: none;
+  background: white;
+  color: var(--notfound);
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+  min-height: 32px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--notfound-border);
 }
 
 .action-btn.leave-btn.active {
@@ -1092,11 +1156,31 @@ a {
 
   .student-card {
     flex-direction: row;
+    flex-wrap: wrap; /* מאפשר לשורת הסיבה ("לא נמצא") לרדת לשורה משלה */
     align-items: center;
     justify-content: space-between;
     padding: 0.5rem 0.75rem;
     gap: 0.5rem;
     min-height: auto;
+  }
+
+  /* בסיס 0 לחלק השם: אחרת עם flex-wrap רוחב הטקסט המלא דוחף את הכפתורים
+     לשורה שנייה בכל הכרטיסים, והם מוכפלים בגובה */
+  .student-card > :first-child {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  /* שורת הסיבה תופסת את כל רוחב הכרטיס מתחת לשם ולכפתורים, ולא נדחסת
+     לטור צר בצד */
+  .student-card .reason-row,
+  .student-card .reason-wrap {
+    flex-basis: 100%;
+  }
+
+  .student-card .reason-row,
+  .student-card .reason-wrap .reason-tag {
+    margin-top: 0;
   }
 
   .student-info {
@@ -1684,3 +1768,17 @@ a {
   .ra-item { align-items: flex-start; }
   .ra-side { flex-direction: column-reverse; align-items: flex-end; gap: 0.4rem; }
 }
+
+/* --- לא נמצאו בסבבים (מידע, לא היעדרות) --- */
+.nf-reasons { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.25rem; }
+.nf-reason {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--notfound);
+  background: var(--notfound-bg);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}
+/* "בלי סיבה" הוא מה שכדאי לברר - מודגש בכתום ולא באדום */
+.nf-reason.nf-no-reason { color: #b45309; background: var(--leave-bg); }
+.nf-count { font-size: 0.78rem; font-weight: 800; color: var(--notfound); white-space: nowrap; }
