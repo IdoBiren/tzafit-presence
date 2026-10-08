@@ -1,27 +1,42 @@
 import { useState } from 'react';
-import { AlertOctagon, ShieldCheck, ShieldAlert, Undo, Flame, BellRing, Search, X } from 'lucide-react';
+import { AlertOctagon, ShieldCheck, ShieldAlert, Undo, Flame, BellRing, Search, X, Home } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
+import { findRecentRound, SESSION_LABELS } from '../utils/attendanceStats';
 
-const EmergencyMode = ({ students, emergencyState, onSaveEmergencyState, onSetEmergencyRecord }) => {
+const formatTime = (iso) => new Date(iso).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+
+const EmergencyMode = ({ students, history, emergencyState, onSaveEmergencyState, onSetEmergencyRecord, onMoveToVerify }) => {
   const [reasonInput, setReasonInput] = useState('');
   const [pendingStart, setPendingStart] = useState(false);
   const [pendingEnd, setPendingEnd] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // הפעלת מצב חירום - כל חניך רשום נכנס לרשימה כ"טרם אומת", בלי קשר לסבב
-  // הנוכחות האחרון. חניך שסומן "בבית"/"חסר" בטעות או חזר לקמפוס, וגם חניך
-  // שלא סומן כלל, חייבים להיות במעקב במפקד חירום אמיתי.
+  // סבב נוכחות מ-12 השעות האחרונות (אם יש) - ממנו לוקחים מי בבית.
+  // מחושב בכל רינדור כדי שחלון האישור יציג מספר עדכני לפני ההפעלה.
+  const recentRound = findRecentRound(history);
+  const homeAtStart = recentRound ? students.filter(s => recentRound.records?.[s.id] === 'leave') : [];
+
+  // הפעלת מצב חירום. אף חניך לא נעלם מהרשימה (תיקון e6ce9da): מי שסומן
+  // "בבית" בסבב האחרון נכנס ל-home - מוצג בנפרד בתחתית, מחוץ לספירה, עם
+  // כפתור "בעצם בפנימייה". כל השאר - כולל לא מסומנים ו"לא נמצא" - "טרם אומת".
+  // החלוקה נשמרת ברגע ההפעלה, כדי שסימוני נוכחות בזמן החירום לא ישנו אותה.
   const handleStartEmergency = () => {
     const initialRecords = {};
+    const home = {};
     students.forEach(s => {
-      initialRecords[s.id] = false; // טרם אומת
+      if (recentRound?.records?.[s.id] === 'leave') home[s.id] = true;
+      else initialRecords[s.id] = false; // טרם אומת
     });
 
     onSaveEmergencyState({
       active: true,
       triggeredAt: new Date().toISOString(),
       reason: reasonInput || 'בדיקת נוכחות חירום כללית',
-      records: initialRecords
+      records: initialRecords,
+      home,
+      baselineRound: recentRound
+        ? { date: recentRound.date, session: recentRound.session, timestamp: recentRound.timestamp }
+        : null
     });
   };
 
@@ -57,7 +72,9 @@ const EmergencyMode = ({ students, emergencyState, onSaveEmergencyState, onSetEm
       active: false,
       triggeredAt: null,
       reason: '',
-      records: {}
+      records: {},
+      home: {},
+      baselineRound: null
     });
   };
 
@@ -116,7 +133,11 @@ const EmergencyMode = ({ students, emergencyState, onSaveEmergencyState, onSetEm
         <ConfirmModal
           open={pendingStart}
           title="הפעלת מצב חירום מוסדי"
-          message={`מסך הבית של כלל המדריכים יוחלף מיידית ברשימת בדיקה. סיבה: "${reasonInput || 'בדיקת נוכחות חירום כללית'}". להמשיך?`}
+          message={`מסך הבית של כלל המדריכים יוחלף מיידית ברשימת בדיקה. סיבה: "${reasonInput || 'בדיקת נוכחות חירום כללית'}". ${
+            recentRound
+              ? `לפי סבב ${SESSION_LABELS[recentRound.session]} (${formatTime(recentRound.timestamp)}), ${homeAtStart.length} חניכים בבית - הם יוצגו בנפרד ולא ייספרו.`
+              : 'לא נמצא סבב נוכחות מ-12 השעות האחרונות - כל החניכים ייבדקו.'
+          } להמשיך?`}
           confirmLabel="הפעל חירום עכשיו"
           danger
           onConfirm={confirmStart}
@@ -130,6 +151,11 @@ const EmergencyMode = ({ students, emergencyState, onSaveEmergencyState, onSetEm
   const matchesSearch = (s) => s.name.includes(searchQuery) || s.room.includes(searchQuery);
   const unaccountedStudents = students.filter(s => emergencyState.records[s.id] === false && matchesSearch(s));
   const safeStudents = students.filter(s => emergencyState.records[s.id] === true && matchesSearch(s));
+  // "בבית" לפי הסבב שלפניו הופעל החירום - מסמך חירום ישן בלי home מתנהג כמו קודם
+  const homeMap = emergencyState.home || {};
+  const homeCount = students.filter(s => homeMap[s.id]).length;
+  const homeStudents = students.filter(s => homeMap[s.id] && matchesSearch(s));
+  const baseline = emergencyState.baselineRound;
 
   // חשוב: הספירה הכוללת והאחוז נשארים על כל הרשימה, לא רק על התוצאות המסוננות
   const totalStudentsCount = Object.keys(emergencyState.records).length;
@@ -158,7 +184,14 @@ const EmergencyMode = ({ students, emergencyState, onSaveEmergencyState, onSetEm
           display: 'inline-block',
           border: '1px solid rgba(255,255,255,0.2)'
         }}>
-          <span>בדיקת החירום מתבצעת עבור <strong>כלל {totalStudentsCount} חניכי הפנימייה</strong> הרשומים כעת במערכת.</span>
+          {baseline ? (
+            <span>
+              בדיקה עבור <strong>{totalStudentsCount} חניכים בפנימייה</strong>
+              {' · '}{homeCount} בבית לפי סבב {SESSION_LABELS[baseline.session]}, {formatTime(baseline.timestamp)}
+            </span>
+          ) : (
+            <span>בדיקת החירום מתבצעת עבור <strong>כלל {totalStudentsCount} חניכי הפנימייה</strong> הרשומים כעת במערכת.</span>
+          )}
         </div>
 
         <span style={{ fontSize: '0.8rem', opacity: 0.8, display: 'block', marginTop: '0.5rem' }}>
@@ -260,8 +293,8 @@ const EmergencyMode = ({ students, emergencyState, onSaveEmergencyState, onSetEm
                 <div className="empty-state-icon" style={{ backgroundColor: '#ccfbf1', color: 'var(--present)' }}>
                   <ShieldCheck size={24} />
                 </div>
-                <div className="empty-state-title" style={{ color: 'var(--present)' }}>אין חניכים חסרים!</div>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>כל חניכי הפנימייה אומתו כבטוחים ושלמים.</p>
+                <div className="empty-state-title" style={{ color: 'var(--present)' }}>כולם אומתו!</div>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>כל החניכים שבפנימייה אומתו כבטוחים ושלמים.</p>
               </div>
             )}
           </div>
@@ -305,6 +338,43 @@ const EmergencyMode = ({ students, emergencyState, onSaveEmergencyState, onSetEm
           </div>
         </div>
       </div>
+
+      {/* בבית לפי הסבב האחרון - בתחתית, מחוץ לספירה. לא מוסתרים: אם חניך
+          בעצם בפנימייה, מעבירים אותו לאימות בלחיצה */}
+      {homeCount > 0 && (
+        <div className="emergency-column emergency-home">
+          <div className="emergency-col-title">
+            <span>
+              בבית לפי סבב {baseline ? `${SESSION_LABELS[baseline.session]} (${formatTime(baseline.timestamp)})` : 'הנוכחות האחרון'} ({homeStudents.length})
+            </span>
+            <Home size={18} />
+          </div>
+          <p className="emergency-home-note">לא נספרים בהתקדמות. אם חניך בעצם בפנימייה - העבר אותו לאימות.</p>
+          <div className="emergency-list">
+            {homeStudents.map(student => (
+              <div key={student.id} className="emergency-item home">
+                <div>
+                  <div className="emergency-item-name">
+                    {student.name} <span className="emergency-home-tag">בבית</span>
+                  </div>
+                  <div className="emergency-item-meta">
+                    {student.dorm} • חדר {student.room}
+                    {student.parentPhone && ` • טלפון הורה: ${student.parentPhone}`}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-undo-action"
+                  onClick={() => onMoveToVerify(student.id)}
+                  title="העבר לרשימת טרם אומתו"
+                >
+                  בעצם בפנימייה
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* סגירת חירום ושחרור המערכת */}
       <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>

@@ -1782,3 +1782,34 @@ a {
 /* "בלי סיבה" הוא מה שכדאי לברר - מודגש בכתום ולא באדום */
 .nf-reason.nf-no-reason { color: #b45309; background: var(--leave-bg); }
 .nf-count { font-size: 0.78rem; font-weight: 800; color: var(--notfound); white-space: nowrap; }
+
+/* --- חירום: "בבית" לפי הסבב האחרון (מחוץ לספירה, בתחתית) --- */
+.emergency-home {
+  margin-top: 1.25rem;
+}
+
+.emergency-home .emergency-col-title {
+  color: #92400e;
+}
+
+.emergency-home-note {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0.25rem 0 0.75rem;
+}
+
+.emergency-item.home {
+  border-right: 4px solid var(--leave);
+  background-color: #fafaf9;
+}
+
+.emergency-home-tag {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #92400e;
+  background: var(--leave-bg);
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+}

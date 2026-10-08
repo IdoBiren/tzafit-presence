@@ -15,6 +15,7 @@ import {
   updateDoc,
   getDoc,
   getDocs,
+  deleteField,
   collection,
 } from 'firebase/firestore';
 
@@ -175,6 +176,22 @@ const run = async () => {
     if (ok) { passed++; console.log('  PASS  שני הסימונים המקבילים נשמרו'); }
     else { failures++; console.log(`  FAIL  שני הסימונים המקבילים נשמרו  (records=${JSON.stringify(records)})`); }
   });
+
+  // חניך שנרשם "בבית" בתחילת החירום ומתברר שהוא בפנימייה: מדריך מעביר אותו
+  // מ-home ל-records (moveEmergencyStudentToVerify) - בלי לגעת ב-active
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await updateDoc(doc(ctx.firestore(), 'emergency', 'state'), { home: { '7': true } });
+  });
+  await check(
+    'מדריך מעביר חניך מ"בבית" לאימות (home.7 נמחק, records.7=false)',
+    updateDoc(doc(counselor, 'emergency', 'state'), { 'home.7': deleteField(), 'records.7': false }),
+    'allow'
+  );
+  await check(
+    'מדריך מנסה לכבות חירום יחד עם העברה מ"בבית"',
+    updateDoc(doc(counselor, 'emergency', 'state'), { 'home.8': deleteField(), active: false }),
+    'deny'
+  );
 
   console.log('settings/groups - שינוי שמות קבוצות');
   await check(

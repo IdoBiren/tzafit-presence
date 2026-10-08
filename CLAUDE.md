@@ -33,7 +33,7 @@ Push to `main` → `.github/workflows/deploy.yml` builds and deploys **Hosting o
 
 ## Data model
 
-`students/{id}`, `history/{date}_{session}` (`records: {studentId: present|absent|leave|null}`, `notes: {studentId: reason}`), `emergency/state` (singleton), `users/{uid}`, `settings/groups` (`{names: [4 strings]}`).
+`students/{id}`, `history/{date}_{session}` (`records: {studentId: present|absent|leave|null}`, `notes: {studentId: reason}`), `emergency/state` (singleton: `records: {id: bool}` = verified, `home: {id: true}`, `baselineRound`), `users/{uid}`, `settings/groups` (`{names: [4 strings]}`).
 
 - **Status meanings — `'absent'` is NOT an absence.** `present` = seen at the round; `'absent'` is shown as **"לא נמצא"**: in the boarding school today but not at this round (club, therapy…), with an optional reason in `notes.<id>`; `leave` = "בבית", not in the school today; `null` = unmarked, which is also what counselors use when nobody knows where a student is. The stored value stayed `'absent'` on purpose (no migration) — only labels changed; use `STATUS_LABELS` from `attendanceStats.js`. The dashboard's metric is "% in school" = (present + absent) / marked, and "not found" is informational, never red. A status change away from `'absent'` deletes that student's note in the same write.
 - Sessions: `morning, afternoon, evening, night` (UI: פתיחת יום / ארוחת ערב / כיבוי אורות / לילה). `SESSION_ORDER` in storage.js.
@@ -45,6 +45,7 @@ Push to `main` → `.github/workflows/deploy.yml` builds and deploys **Hosting o
 
 ## Known pitfalls
 
+- **Emergency start splits by the latest round** (`findRecentRound` in `attendanceStats.js`: chronologically latest round with any mark whose `timestamp` is within 12h). Students marked `leave` in it go to `home` (listed at the bottom, outside the progress count, with a "בעצם בפנימייה" button → `moveEmergencyStudentToVerify`); everyone else — including unmarked and "לא נמצא" — goes to `records` as unverified. The split is frozen in the emergency doc at start. Never drop a student from both lists (see commit e6ce9da).
 - **Multi-writer docs: write single fields, never the whole doc.** Attendance uses `setDoc(..., {merge: true})` with one student; emergency marks use `updateEmergencyRecords` (`updateDoc` on `records.<id>`). `saveEmergencyState` (full `setDoc`) is only for start/end of an emergency — don't use it for per-student marks, or concurrent counselors overwrite each other.
 - Students are written one doc at a time: `addStudent` (transaction that picks max+1 and retries if the id was taken concurrently), `updateStudent` (`updateDoc`, so editing a student someone else deleted fails instead of resurrecting it), `deleteStudent`. Never go back to saving the whole list from the client's copy — that silently deleted students added concurrently by other counselors.
 - **No silent save failures.** Firestore doesn't reject writes while offline; they just wait. So every write in the UI goes through `withPendingTimeout` (`utils/saveErrors.js`) to show a "waiting for network" state after 8s, and every error is shown with `describeSaveError` (Hebrew, per Firestore error code — e.g. `resource-exhausted` = daily quota). Dialogs close only after the save resolves; on failure they stay open with the typed data. Listener `onError`s feed the red "data not updating" banner in App.jsx.

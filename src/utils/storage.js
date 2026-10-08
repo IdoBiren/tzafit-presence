@@ -558,8 +558,9 @@ export const saveEmergencyState = async (state) => {
       throw error;
     }
   } else {
-    // Fallback ל-LocalStorage
+    // Fallback ל-LocalStorage - האירוע מעדכן את subscribeToEmergency באותו חלון
     localStorage.setItem("tzafit_emergency_v7", JSON.stringify(state));
+    window.dispatchEvent(new Event('storage'));
   }
 };
 
@@ -574,6 +575,8 @@ export const updateEmergencyRecords = async (changes) => {
       const fieldUpdates = {};
       Object.entries(changes).forEach(([studentId, value]) => {
         fieldUpdates[`records.${studentId}`] = value === null ? deleteField() : value;
+        // חניך שנמחק מהרשימה יוצא גם מרשימת "בבית" של החירום
+        if (value === null) fieldUpdates[`home.${studentId}`] = deleteField();
       });
       await updateDoc(doc(db, "emergency", "state"), fieldUpdates);
     } catch (error) {
@@ -584,11 +587,36 @@ export const updateEmergencyRecords = async (changes) => {
     // Fallback ל-LocalStorage
     const state = JSON.parse(localStorage.getItem("tzafit_emergency_v7")) || { active: false, triggeredAt: null, records: {}, reason: "" };
     const records = { ...state.records };
+    const home = { ...(state.home || {}) };
     Object.entries(changes).forEach(([studentId, value]) => {
-      if (value === null) delete records[studentId];
-      else records[studentId] = value;
+      if (value === null) {
+        delete records[studentId];
+        delete home[studentId];
+      } else records[studentId] = value;
     });
-    localStorage.setItem("tzafit_emergency_v7", JSON.stringify({ ...state, records }));
+    localStorage.setItem("tzafit_emergency_v7", JSON.stringify({ ...state, records, home }));
+    window.dispatchEvent(new Event('storage'));
+  }
+};
+
+// 6ב. חניך שנרשם "בבית" בתחילת החירום אבל בעצם בפנימייה: יוצא מ-home ונכנס
+// לאימות כ"טרם אומת" - שני השדות באותה כתיבה, ורק של החניך הזה, כדי לא
+// לדרוס סימונים מקבילים של מדריכים אחרים.
+export const moveEmergencyStudentToVerify = async (studentId) => {
+  if (isFirebaseConfigured) {
+    await updateDoc(doc(db, "emergency", "state"), {
+      [`home.${studentId}`]: deleteField(),
+      [`records.${studentId}`]: false
+    });
+  } else {
+    const state = JSON.parse(localStorage.getItem("tzafit_emergency_v7")) || { active: false, triggeredAt: null, records: {}, reason: "" };
+    const home = { ...(state.home || {}) };
+    delete home[studentId];
+    localStorage.setItem("tzafit_emergency_v7", JSON.stringify({
+      ...state,
+      home,
+      records: { ...state.records, [studentId]: false }
+    }));
     window.dispatchEvent(new Event('storage'));
   }
 };

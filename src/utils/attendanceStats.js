@@ -259,3 +259,22 @@ export const computeNotFound = ({ students, history, period, today = todayLocalI
     .filter(s => s.count > 0)
     .sort((a, b) => b.count - a.count || b.withoutReason - a.withoutReason);
 };
+
+// ---------- מצב חירום ----------
+
+// הסבב שעליו מתבססת חלוקת החירום: המאוחר ביותר כרונולוגית (תאריך ואז
+// סבב) שסומן בו משהו ב-maxAgeHours השעות האחרונות. ה-timestamp של סבב הוא
+// זמן הסימון האחרון בו. 12 שעות מכסות גם חירום בלילה, כשהסבב האחרון הוא
+// כיבוי האורות של אתמול; סבב ישן יותר כבר לא משקף איפה הילדים.
+export const findRecentRound = (history, now = new Date(), maxAgeHours = 12) => {
+  const cutoff = now.getTime() - maxAgeHours * 60 * 60 * 1000;
+  const recent = (history || []).filter(h => {
+    const t = Date.parse(h.timestamp);
+    return !Number.isNaN(t) && t >= cutoff && t <= now.getTime() + 60 * 1000 && hasAnyMark(h);
+  });
+  if (recent.length === 0) return null;
+  return recent.reduce((latest, h) => {
+    if (h.date !== latest.date) return h.date > latest.date ? h : latest;
+    return ALL_SESSIONS.indexOf(h.session) > ALL_SESSIONS.indexOf(latest.session) ? h : latest;
+  });
+};

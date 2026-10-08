@@ -34,6 +34,7 @@ import {
   subscribeToEmergency, 
   saveEmergencyState,
   updateEmergencyRecords,
+  moveEmergencyStudentToVerify,
   getOrCreateUserRole,
   updateUserProfile,
   subscribeToUserProfile,
@@ -312,6 +313,16 @@ function AppContent() {
   const handleOpenRound = (dorm, date, session) => {
     setRollCallTarget({ dorm, date, session });
     setActiveTab('rollcall');
+  };
+
+  // "בעצם בפנימייה" - חניך שנרשם "בבית" בתחילת החירום עובר לרשימת האימות
+  const handleMoveEmergencyToVerify = async (studentId) => {
+    try {
+      await moveEmergencyStudentToVerify(studentId);
+    } catch (error) {
+      console.error("שגיאה בהעברת חניך לאימות חירום:", error);
+      showToast(`ההעברה לרשימת האימות נכשלה: ${describeSaveError(error)}`, 'error', 8000);
+    }
   };
 
   const clearRollCallTarget = () => {
@@ -610,9 +621,11 @@ function AppContent() {
             <div style={{ display: activeTab === 'emergency' ? 'block' : 'none' }}>
               <EmergencyMode
                 students={students}
+                history={history}
                 emergencyState={emergencyState}
                 onSaveEmergencyState={handleSaveEmergencyState}
                 onSetEmergencyRecord={handleSetEmergencyRecord}
+                onMoveToVerify={handleMoveEmergencyToVerify}
               />
             </div>
           )}
