@@ -6,7 +6,8 @@ const QUICK_REASONS =['חוג', 'טיפול', 'מרפאה', 'פעילות'];
 // שורת סיבה לחניך שסומן "לא נמצא" (בפנימייה, אבל לא בסבב הזה).
 // הסיבה רשות. note מגיע מהסבב השמור (מתעדכן מיד גם בלי רשת, בזכות המטמון
 // המקומי של Firestore), ו-onSave מטפל בתג השמירה ובהודעת שגיאה.
-const AbsenceReason = ({ note, onSave }) => {
+// onDismiss (רק כשהכרטיס מוחזק במקום): "בלי סיבה" - משחרר את הכרטיס בלי לשמור.
+const AbsenceReason = ({ note, onSave, onDismiss }) => {
   const [editing, setEditing] = useState(false);
   const [showOther, setShowOther] = useState(false);
   const [draft, setDraft] = useState('');
@@ -78,6 +79,11 @@ const AbsenceReason = ({ note, onSave }) => {
       ) : (
         <button type="button" className="reason-chip" onClick={() => { setShowOther(true); setDraft(''); }}>
           אחר…
+        </button>
+      )}
+      {onDismiss && !editing && !note && (
+        <button type="button" className="reason-chip ghost" onClick={onDismiss}>
+          בלי סיבה
         </button>
       )}
       {editing && (

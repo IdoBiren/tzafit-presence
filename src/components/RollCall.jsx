@@ -86,10 +86,31 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, onUpdateAttenda
     setTempRecords(initialRecords);
   }, [date, session, history, students]);
 
+  // חניכים שסומנו "לא נמצא" ועוד לא נבחרה להם סיבה: במיון "טרם סומנו קודם"
+  // הכרטיס שלהם נשאר במקום, אחרת הוא קופץ לסוף הרשימה ואיתו כפתורי הסיבה.
+  // "נוכח"/"בבית" לא מוחזקים - הם יורדים לסוף מיד כמו תמיד.
+  const [heldInPlace, setHeldInPlace] = useState(() => new Set());
+  const setHeld = (studentId, held) => setHeldInPlace(prev => {
+    if (prev.has(studentId) === held) return prev;
+    const next = new Set(prev);
+    if (held) next.add(studentId);
+    else next.delete(studentId);
+    return next;
+  });
+
+  // מעבר סבב/קבוצה/חיפוש/מיון משחרר את כולם, כדי שהחזקה לא תישאר "תקועה"
+  const heldResetKey = `${date}|${session}|${selectedDorm}|${searchQuery}|${sortBy}`;
+  const [appliedHeldResetKey, setAppliedHeldResetKey] = useState(heldResetKey);
+  if (heldResetKey !== appliedHeldResetKey) {
+    setAppliedHeldResetKey(heldResetKey);
+    if (heldInPlace.size > 0) setHeldInPlace(new Set());
+  }
+
   const handleStatusChange = async (studentId, status) => {
     // אם לוחצים שוב על אותו כפתור מסומן - מורידים את הסימון (מחזירים ל-null)
     const currentStatus = tempRecords[studentId];
     const newStatus = currentStatus === status ? null : status;
+    setHeld(studentId, newStatus === 'absent');
 
     setTempRecords(prev => ({ ...prev, [studentId]: newStatus })); // סימון אופטימי, updater טהור
     setStudentSaveStatus(prev => ({ ...prev, [studentId]: 'saving' }));
@@ -133,6 +154,8 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, onUpdateAttenda
   // שגיאה), כדי שגם סיבה לא תיכשל בשקט. זורק הלאה כדי ש-AbsenceReason
   // יחזור למצב עריכה.
   const handleNoteSave = async (studentId, note) => {
+    // נבחרה סיבה - המדריך סיים עם החניך, והכרטיס יכול לרדת לסוף
+    setHeld(studentId, false);
     const writeId = (latestWriteRef.current[studentId] || 0) + 1;
     latestWriteRef.current[studentId] = writeId;
     const isLatest = () => latestWriteRef.current[studentId] === writeId;
@@ -155,6 +178,7 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, onUpdateAttenda
       if (isLatest()) setStudentSaveStatus(prev => ({ ...prev, [studentId]: 'error' }));
       const student = students.find(s => s.id === studentId);
       showToast(`שמירת הסיבה של ${student?.name || 'חניך'} נכשלה: ${describeSaveError(error)}`, 'error', 8000);
+      setHeld(studentId, true); // נשאר במקום עם כפתורי הסיבה, כדי לנסות שוב
       throw error;
     }
   };
@@ -169,8 +193,9 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, onUpdateAttenda
   // סדר חניכים בהתאם לאפשרות המיון שנבחרה (ברירת מחדל: טרם סומנו)
   const sortedStudents = [...filteredStudents].sort((a, b) => {
     if (sortBy === 'unmarked') {
-      const aMarked = tempRecords[a.id] !== null && tempRecords[a.id] !== undefined;
-      const bMarked = tempRecords[b.id] !== null && tempRecords[b.id] !== undefined;
+      // חניך מוחזק ("לא נמצא" בלי סיבה עדיין) ממוין כאילו לא סומן - נשאר במקומו
+      const aMarked = tempRecords[a.id] !== null && tempRecords[a.id] !== undefined && !heldInPlace.has(a.id);
+      const bMarked = tempRecords[b.id] !== null && tempRecords[b.id] !== undefined && !heldInPlace.has(b.id);
       
       // מי שלא סומן מופיע ראשון
       if (aMarked && !bMarked) return 1;
@@ -429,6 +454,7 @@ const RollCall = ({ students, history, onUpdateSingleAttendance, onUpdateAttenda
                   <AbsenceReason
                     note={roundNotes[student.id]}
                     onSave={(note) => handleNoteSave(student.id, note)}
+                    onDismiss={heldInPlace.has(student.id) ? () => setHeld(student.id, false) : undefined}
                   />
                 )}
               </div>
